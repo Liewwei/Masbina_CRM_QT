@@ -451,14 +451,13 @@ async function startServer() {
 
       const response = await callGeminiWithRetry(() =>
         ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.8-flash',
           contents: { parts },
           config: {
             systemInstruction: MASBINA_SYSTEM_INSTRUCTION,
             responseMimeType: 'application/json',
             responseSchema: PARSE_RESPONSE_SCHEMA,
             maxOutputTokens: 32768,
-            thinkingConfig: { thinkingBudget: 1024 },
           },
         }),
       );
