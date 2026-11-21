@@ -133,6 +133,8 @@ export const UI_TEXT = {
     savedToWorkspace: 'Saved to CRM & Quotation Builder',
     openInCrm: 'Open in CRM Board',
     openInQuotation: 'Edit Quotation',
+    instantCctvPresetsLabel: 'Instant CCTV Quotation Presets',
+    instantCctvPresetsHint: 'Opens directly in Quotation Builder with Masbina MYR pricing',
 
     // CRM Board
     crmTitle: 'CRM Sales Visit & Follow-Up Tracker',
@@ -341,6 +343,8 @@ export const UI_TEXT = {
     savedToWorkspace: '已自动保存至客户跟进表与报价单',
     openInCrm: '前往客户跟进表查看',
     openInQuotation: '前往报价单编辑器',
+    instantCctvPresetsLabel: '一键生成标准 CCTV 报价',
+    instantCctvPresetsHint: '直接套用 Masbina 标准马币价目表并打开报价单编辑器',
 
     // CRM Board
     crmTitle: '销售汇报与跟进看板',

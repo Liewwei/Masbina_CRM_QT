@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowRight,
+  Camera,
   Check,
   ImagePlus,
   Loader2,
@@ -33,13 +34,20 @@ import {
   generateNextQuoteRef,
   getTodayISO,
 } from '../data/seedData.ts';
+import {
+  CCTV_QUOTATION_PRESETS,
+  type CctvQuotationPreset,
+  createQuotationFromCctvPreset,
+} from '../data/priceCatalog.ts';
 
 interface AiQuickEntryProps {
   lang: Language;
   existingQuotations: EngineeringQuotation[];
   onSaveGeneratedBundle: (record: CrmRecord, quotation: EngineeringQuotation) => void;
+  onCreatePresetQuotation: (quotation: EngineeringQuotation) => void;
   onOpenCrmRecord: (recordId: string) => void;
   onOpenQuotation: (quotationId: string) => void;
+  preparedBy?: string;
 }
 
 interface SpeechRecognitionInstance {
@@ -57,8 +65,10 @@ export function AiQuickEntry({
   lang,
   existingQuotations,
   onSaveGeneratedBundle,
+  onCreatePresetQuotation,
   onOpenCrmRecord,
   onOpenQuotation,
+  preparedBy,
 }: AiQuickEntryProps) {
   const t = UI_TEXT[lang];
 
@@ -264,7 +274,7 @@ export function AiQuickEntry({
         projectTitle:
           data.quotationDraft.projectTitle ||
           `Security & Automation Proposal for ${newRecord.clientName}`,
-        preparedBy: 'Masbina Engineering Sales Team',
+        preparedBy: preparedBy || 'Masbina Engineering Sales Team',
         issueDate: getTodayISO(),
         validityDate: addDaysISO(30),
         equipmentItems: (data.quotationDraft.equipmentItems || []).map((item) => ({
@@ -318,6 +328,17 @@ export function AiQuickEntry({
     ? computeQuotationTotals(lastResult.quotation)
     : null;
 
+  const handleInstantCctvPreset = (preset: CctvQuotationPreset) => {
+    const newQuotation = createQuotationFromCctvPreset(preset, {
+      quoteRef: generateNextQuoteRef(existingQuotations),
+      issueDate: getTodayISO(),
+      validityDate: addDaysISO(30),
+      termsAndConditions: DEFAULT_TERMS_AND_CONDITIONS,
+      preparedBy: preparedBy || 'Masbina Engineering Sales Team',
+    });
+    onCreatePresetQuotation(newQuotation);
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Title */}
@@ -328,6 +349,37 @@ export function AiQuickEntry({
         <p className="mt-1 text-sm text-slate-600 leading-relaxed">
           {t.quickEntrySubtitle}
         </p>
+      </div>
+
+      {/* Instant CCTV Quotation Presets Bar */}
+      <div className="rounded-lg border border-slate-200 bg-white px-4 py-3.5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Camera className="h-4 w-4 text-blue-600 shrink-0" />
+              <h2 className="text-xs font-semibold text-slate-900">
+                {t.instantCctvPresetsLabel}
+              </h2>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-500">
+              {t.instantCctvPresetsHint}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {CCTV_QUOTATION_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => handleInstantCctvPreset(preset)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50/70 px-3 py-1.5 text-xs font-medium text-blue-800 hover:border-blue-300 hover:bg-blue-100/80 transition-colors whitespace-nowrap"
+              >
+                <span>{lang === 'zh' ? preset.labelZh : preset.labelEn}</span>
+                <ArrowRight className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Main 2-Column Workspace */}

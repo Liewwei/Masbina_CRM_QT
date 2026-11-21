@@ -54,9 +54,21 @@ export default function App() {
 
   const [users, setUsers] = useState<AppUser[]>(() => {
     const loaded = loadFromStorage<AppUser[]>(STORAGE_KEYS.users, INITIAL_USERS);
-    return Array.isArray(loaded)
+    const cleaned = Array.isArray(loaded)
       ? loaded.filter((u) => !u.id.startsWith('usr-seed-'))
       : INITIAL_USERS;
+
+    if (
+      cleaned.length > 0 &&
+      !cleaned.some((u) => u.role === 'Admin' && u.status === 'Active')
+    ) {
+      const earliestIdx = cleaned.length - 1;
+      return cleaned.map((u, idx) =>
+        idx === earliestIdx ? { ...u, role: 'Admin', status: 'Active' } : u,
+      );
+    }
+
+    return cleaned;
   });
 
   const [session, setSession] = useState<AuthSession | null>(() => {
@@ -318,6 +330,12 @@ export default function App() {
     setActiveQuotationId(quote.id);
   };
 
+  const handleCreatePresetQuotation = (quote: EngineeringQuotation) => {
+    setQuotations((prev) => [quote, ...prev]);
+    setActiveQuotationId(quote.id);
+    setActiveSection('quotation-builder');
+  };
+
   const handleUpdateQuotation = (updated: EngineeringQuotation) => {
     setQuotations((prev) =>
       prev.map((q) => (q.id === updated.id ? updated : q)),
@@ -568,8 +586,10 @@ export default function App() {
                 lang={lang}
                 existingQuotations={quotations}
                 onSaveGeneratedBundle={handleSaveGeneratedBundle}
+                onCreatePresetQuotation={handleCreatePresetQuotation}
                 onOpenCrmRecord={handleOpenCrmRecord}
                 onOpenQuotation={handleOpenQuotation}
+                preparedBy={currentUser.fullName}
               />
             )}
 
