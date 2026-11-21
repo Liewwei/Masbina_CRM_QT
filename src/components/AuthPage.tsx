@@ -12,6 +12,7 @@ import {
 import type { AppUser, Language, UserRole } from '../types/masbina.ts';
 import { UI_TEXT, getRoleLabel } from '../data/i18n.ts';
 import { generateSixDigitCode, isValidPassword } from '../data/seedData.ts';
+import { MasbinaLetterheadLogo } from './MasbinaLogo.tsx';
 
 type AuthMode = 'signin' | 'signup' | 'forgot';
 
@@ -215,22 +216,11 @@ export function AuthPage({
       {/* Left Brand Panel (Desktop Slate Navy Industrial Showcase) */}
       <aside className="hidden lg:flex lg:w-[440px] xl:w-[480px] lg:shrink-0 flex-col justify-between bg-[#0F172A] px-10 py-10 text-slate-200 border-r border-slate-800">
         <div>
-          <div className="flex items-center gap-3">
-            <svg
-              width="34"
-              height="34"
-              viewBox="0 0 28 28"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <rect width="28" height="28" rx="6" fill="#2563EB" />
-              <path
-                d="M7 20V8H10.2L14 14.3L17.8 8H21V20H18.2V12.8L14.8 18.2H13.2L9.8 12.8V20H7Z"
-                fill="white"
-              />
-            </svg>
-            <div>
+          <div className="flex items-center gap-3.5">
+            <div className="rounded-md bg-white px-2.5 py-1.5 shrink-0">
+              <MasbinaLetterheadLogo className="h-12 w-auto max-w-[130px] object-contain shrink-0" />
+            </div>
+            <div className="min-w-0">
               <p className="text-base font-bold tracking-tight text-white">
                 {t.brandName}
               </p>
@@ -302,20 +292,7 @@ export function AuthPage({
         {/* Top Bar with Mobile Brand & Bilingual Switcher */}
         <header className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white lg:bg-transparent lg:border-b-0">
           <div className="flex items-center gap-2.5 lg:invisible">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 28 28"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <rect width="28" height="28" rx="6" fill="#2563EB" />
-              <path
-                d="M7 20V8H10.2L14 14.3L17.8 8H21V20H18.2V12.8L14.8 18.2H13.2L9.8 12.8V20H7Z"
-                fill="white"
-              />
-            </svg>
+            <MasbinaLetterheadLogo className="h-11 w-auto max-w-[120px] object-contain shrink-0 mix-blend-multiply" />
             <span className="font-semibold text-sm text-slate-900 whitespace-nowrap">
               {t.brandName}
             </span>

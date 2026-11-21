@@ -10,6 +10,7 @@ import {
 import type { AppUser, Language, NavSection } from '../types/masbina.ts';
 import { UI_TEXT } from '../data/i18n.ts';
 import { RoleBadge } from './RoleBadge.tsx';
+import { MasbinaLetterheadLogo } from './MasbinaLogo.tsx';
 
 interface SidebarProps {
   activeSection: NavSection;
@@ -91,21 +92,9 @@ export function Sidebar({
       <div className="flex items-start justify-between border-b border-slate-800 px-5 py-5">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 28 28"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="shrink-0"
-              aria-hidden="true"
-            >
-              <rect width="28" height="28" rx="6" fill="#2563EB" />
-              <path
-                d="M7 20V8H10.2L14 14.3L17.8 8H21V20H18.2V12.8L14.8 18.2H13.2L9.8 12.8V20H7Z"
-                fill="white"
-              />
-            </svg>
+            <div className="rounded-md bg-white px-2 py-1 shrink-0">
+              <MasbinaLetterheadLogo className="h-10 w-auto max-w-[110px] object-contain shrink-0" />
+            </div>
             <span className="truncate font-semibold tracking-tight text-white text-[15px] leading-tight">
               {t.brandName}
             </span>

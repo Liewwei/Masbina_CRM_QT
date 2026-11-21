@@ -124,7 +124,7 @@ export function MasbinaLetterheadLogo({
     );
   }
 
-  return <MasbinaLogo className="h-16 w-auto shrink-0" />;
+  return <MasbinaLogo className={className} />;
 }
 
 export function MasbinaLogo({ className = 'h-16 w-auto shrink-0' }: MasbinaLogoProps) {
