@@ -1,12 +1,8 @@
-import { useRef, useState } from 'react';
-import { ImageUp, Printer, X } from 'lucide-react';
+import { Printer, X } from 'lucide-react';
 import type { EngineeringQuotation, Language } from '../types/masbina.ts';
 import { UI_TEXT } from '../data/i18n.ts';
 import { computeQuotationTotals, formatRM } from '../data/seedData.ts';
-import {
-  MasbinaLetterheadLogo,
-  saveCompanyLogoFromFile,
-} from './MasbinaLogo.tsx';
+import { MasbinaLetterheadLogo } from './MasbinaLogo.tsx';
 
 interface QuotationPreviewModalProps {
   quotation: EngineeringQuotation;
@@ -21,29 +17,9 @@ export function QuotationPreviewModal({
 }: QuotationPreviewModalProps) {
   const t = UI_TEXT[lang];
   const totals = computeQuotationTotals(quotation);
-  const logoInputRef = useRef<HTMLInputElement | null>(null);
-  const [logoError, setLogoError] = useState<string | null>(null);
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setLogoError(null);
-    const result = await saveCompanyLogoFromFile(file);
-    if (!result.ok) {
-      if (result.reason === 'type') {
-        setLogoError(t.logoUploadTypeError);
-      } else if (result.reason === 'size') {
-        setLogoError(t.logoUploadSizeError);
-      } else {
-        setLogoError(t.logoUploadStorageError);
-      }
-    }
   };
 
   return (
@@ -55,55 +31,32 @@ export function QuotationPreviewModal({
     >
       <div className="relative w-full max-w-[900px] rounded-lg border border-slate-200 bg-white shadow-xl print-only-container">
         {/* Modal Action Toolbar (hidden during print) */}
-        <div className="no-print sticky top-0 z-10 border-b border-slate-200 bg-slate-50 px-6 py-3.5 rounded-t-lg">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 text-xs text-slate-600 min-w-0">
-              <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
-                {quotation.quoteRef}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span className="truncate">{quotation.clientName || 'Untitled Client'}</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                ref={logoInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={handleLogoUpload}
-                className="hidden"
-                aria-label={t.uploadLogoBtn}
-              />
-              <button
-                type="button"
-                onClick={() => logoInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
-              >
-                <ImageUp className="h-3.5 w-3.5 text-blue-600" />
-                {t.uploadLogoBtn}
-              </button>
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
-              >
-                <Printer className="h-3.5 w-3.5" />
-                {t.printSavePdf}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
-              >
-                <X className="h-3.5 w-3.5" />
-                {t.closePreview}
-              </button>
-            </div>
+        <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-3.5 rounded-t-lg">
+          <div className="flex items-center gap-3 text-xs text-slate-600 min-w-0">
+            <span className="font-mono font-semibold text-slate-900 whitespace-nowrap">
+              {quotation.quoteRef}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="truncate">{quotation.clientName || 'Untitled Client'}</span>
           </div>
-          {logoError && (
-            <p role="alert" className="mt-2 text-xs text-red-600">
-              {logoError}
-            </p>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors whitespace-nowrap"
+            >
+              <Printer className="h-3.5 w-3.5" />
+              {t.printSavePdf}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap"
+            >
+              <X className="h-3.5 w-3.5" />
+              {t.closePreview}
+            </button>
+          </div>
         </div>
 
         {/* Printable Official Engineering Quotation Document */}
