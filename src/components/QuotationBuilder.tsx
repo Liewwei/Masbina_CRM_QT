@@ -4,6 +4,7 @@ import {
   ChevronDown,
   Copy,
   Eye,
+  ImageUp,
   Plus,
   Trash2,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ import {
   type CctvQuotationPreset,
   createQuotationFromCctvPreset,
 } from '../data/priceCatalog.ts';
+import { saveCompanyLogoFromFile } from './MasbinaLogo.tsx';
 import { QuotationPreviewModal } from './QuotationPreviewModal.tsx';
 
 interface QuotationBuilderProps {
@@ -61,7 +63,38 @@ export function QuotationBuilder({
   const [showPreview, setShowPreview] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [presetMenuOpen, setPresetMenuOpen] = useState(false);
+  const [logoStatus, setLogoStatus] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
   const presetMenuRef = useRef<HTMLDivElement | null>(null);
+  const logoInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setLogoStatus(null);
+    const result = await saveCompanyLogoFromFile(file);
+    if (result.ok) {
+      setLogoStatus({
+        type: 'success',
+        message:
+          lang === 'en'
+            ? 'Official company logo saved for all quotation PDFs.'
+            : '公司官方 Logo 已保存，将自动显示在所有报价单 PDF 左上角。',
+      });
+    } else {
+      const message =
+        result.reason === 'type'
+          ? t.logoUploadTypeError
+          : result.reason === 'size'
+            ? t.logoUploadSizeError
+            : t.logoUploadStorageError;
+      setLogoStatus({ type: 'error', message });
+    }
+  };
 
   useEffect(() => {
     if (!presetMenuOpen) return;
@@ -434,6 +467,22 @@ export function QuotationBuilder({
             )}
           </div>
 
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={handleLogoUpload}
+            className="hidden"
+            aria-label={t.uploadLogoBtn}
+          />
+          <button
+            type="button"
+            onClick={() => logoInputRef.current?.click()}
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50 whitespace-nowrap"
+          >
+            <ImageUp className="h-3.5 w-3.5 text-blue-600" />
+            {t.uploadLogoBtn}
+          </button>
           <button
             type="button"
             onClick={handleCreateBlank}
@@ -460,6 +509,26 @@ export function QuotationBuilder({
           </button>
         </div>
       </div>
+
+      {logoStatus && (
+        <div
+          role={logoStatus.type === 'error' ? 'alert' : 'status'}
+          className={`flex items-center justify-between rounded-md border px-4 py-2.5 text-xs ${
+            logoStatus.type === 'error'
+              ? 'border-red-200 bg-red-50 text-red-800'
+              : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          }`}
+        >
+          <span>{logoStatus.message}</span>
+          <button
+            type="button"
+            onClick={() => setLogoStatus(null)}
+            className="ml-3 text-[11px] font-medium underline hover:no-underline"
+          >
+            {t.closePanel}
+          </button>
+        </div>
+      )}
 
       {/* Quotation Selector Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-5 py-3">

@@ -1,7 +1,130 @@
-import { useId } from 'react';
+import { useEffect, useId, useState } from 'react';
+
+export const COMPANY_LOGO_STORAGE_KEY = 'masbina_company_logo_v1';
+export const COMPANY_LOGO_UPDATED_EVENT = 'masbina-logo-updated';
+
+const ALLOWED_LOGO_MIME_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+]);
+const MAX_LOGO_FILE_BYTES = 3 * 1024 * 1024;
+
+export function getSavedCompanyLogo(): string | null {
+  try {
+    const raw = window.localStorage.getItem(COMPANY_LOGO_STORAGE_KEY);
+    if (raw && raw.startsWith('data:image/')) {
+      return raw;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCompanyLogoFromFile(
+  file: File,
+): Promise<{ ok: true; dataUrl: string } | { ok: false; reason: 'type' | 'size' | 'storage' | 'read' }> {
+  return new Promise((resolve) => {
+    if (!ALLOWED_LOGO_MIME_TYPES.has(file.type)) {
+      resolve({ ok: false, reason: 'type' });
+      return;
+    }
+
+    if (file.size > MAX_LOGO_FILE_BYTES) {
+      resolve({ ok: false, reason: 'size' });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      if (!dataUrl.startsWith('data:image/')) {
+        resolve({ ok: false, reason: 'read' });
+        return;
+      }
+      try {
+        window.localStorage.setItem(COMPANY_LOGO_STORAGE_KEY, dataUrl);
+        window.dispatchEvent(new Event(COMPANY_LOGO_UPDATED_EVENT));
+        resolve({ ok: true, dataUrl });
+      } catch {
+        resolve({ ok: false, reason: 'storage' });
+      }
+    };
+    reader.onerror = () => resolve({ ok: false, reason: 'read' });
+    reader.readAsDataURL(file);
+  });
+}
 
 interface MasbinaLogoProps {
   className?: string;
+}
+
+export function MasbinaLetterheadLogo({
+  className = 'h-16 w-auto max-w-[160px] object-contain shrink-0 mix-blend-multiply',
+}: MasbinaLogoProps) {
+  const [savedLogo, setSavedLogo] = useState<string | null>(() =>
+    getSavedCompanyLogo(),
+  );
+  const [fallbackStage, setFallbackStage] = useState<'jpg' | 'png' | 'svg'>('jpg');
+
+  useEffect(() => {
+    const syncLogo = () => {
+      setSavedLogo(getSavedCompanyLogo());
+      setFallbackStage('jpg');
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === COMPANY_LOGO_STORAGE_KEY) {
+        syncLogo();
+      }
+    };
+
+    window.addEventListener(COMPANY_LOGO_UPDATED_EVENT, syncLogo);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener(COMPANY_LOGO_UPDATED_EVENT, syncLogo);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  if (savedLogo) {
+    return (
+      <img
+        src={savedLogo}
+        alt="Masbina Technology S/B Logo"
+        onError={() => {
+          setSavedLogo(null);
+          setFallbackStage('jpg');
+        }}
+        className={className}
+      />
+    );
+  }
+
+  if (fallbackStage === 'jpg') {
+    return (
+      <img
+        src="/masbina-logo.jpg"
+        alt="Masbina Technology S/B Logo"
+        onError={() => setFallbackStage('png')}
+        className={className}
+      />
+    );
+  }
+
+  if (fallbackStage === 'png') {
+    return (
+      <img
+        src="/masbina-logo.png"
+        alt="Masbina Technology S/B Logo"
+        onError={() => setFallbackStage('svg')}
+        className={className}
+      />
+    );
+  }
+
+  return <MasbinaLogo className="h-16 w-auto shrink-0" />;
 }
 
 export function MasbinaLogo({ className = 'h-16 w-auto shrink-0' }: MasbinaLogoProps) {
