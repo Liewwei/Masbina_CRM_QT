@@ -72,7 +72,7 @@ export function QuotationBuilder({
   const handleCreateBlank = () => {
     const now = new Date().toISOString();
     const fresh: EngineeringQuotation = {
-      id: `qt-${Date.now()}`,
+      id: `qt-${crypto.randomUUID()}`,
       quoteRef: generateNextQuoteRef(quotations),
       clientName: '',
       contactPerson: '',
@@ -84,7 +84,7 @@ export function QuotationBuilder({
       validityDate: addDaysISO(30),
       equipmentItems: [
         {
-          id: `eq-${Date.now()}`,
+          id: `eq-${crypto.randomUUID()}`,
           itemName: '4MP IP CCTV Camera (Outdoor Weatherproof)',
           brandSpec: 'Hikvision / Dahua Industrial Series',
           businessScope: 'CCTV Surveillance System',
@@ -95,7 +95,7 @@ export function QuotationBuilder({
       ],
       serviceItems: [
         {
-          id: `sv-${Date.now()}-1`,
+          id: `sv-${crypto.randomUUID()}`,
           serviceCategory: 'Design',
           description: 'System Layout Design & Technical Site Planning',
           qty: 1,
@@ -103,7 +103,7 @@ export function QuotationBuilder({
           unitPrice: 600,
         },
         {
-          id: `sv-${Date.now()}-2`,
+          id: `sv-${crypto.randomUUID()}`,
           serviceCategory: 'Installation',
           description: 'Structured Cabling, Conduit & Equipment Installation',
           qty: 1,
@@ -111,7 +111,7 @@ export function QuotationBuilder({
           unitPrice: 1800,
         },
         {
-          id: `sv-${Date.now()}-3`,
+          id: `sv-${crypto.randomUUID()}`,
           serviceCategory: 'Testing & Commissioning',
           description: 'System Configuration, Testing, Handover & User Training',
           qty: 1,
@@ -121,7 +121,7 @@ export function QuotationBuilder({
       ],
       maintenanceItems: [
         {
-          id: `mt-${Date.now()}-1`,
+          id: `mt-${crypto.randomUUID()}`,
           planName: 'Annual Preventive Maintenance & Priority Support',
           frequency: 'Annual',
           description:
@@ -149,22 +149,22 @@ export function QuotationBuilder({
     const now = new Date().toISOString();
     const copy: EngineeringQuotation = {
       ...activeQuote,
-      id: `qt-${Date.now()}`,
+      id: `qt-${crypto.randomUUID()}`,
       quoteRef: generateNextQuoteRef(quotations),
       linkedCrmId: undefined,
       issueDate: getTodayISO(),
       validityDate: addDaysISO(30),
-      equipmentItems: activeQuote.equipmentItems.map((i, idx) => ({
+      equipmentItems: activeQuote.equipmentItems.map((i) => ({
         ...i,
-        id: `eq-${Date.now()}-${idx}`,
+        id: `eq-${crypto.randomUUID()}`,
       })),
-      serviceItems: activeQuote.serviceItems.map((i, idx) => ({
+      serviceItems: activeQuote.serviceItems.map((i) => ({
         ...i,
-        id: `sv-${Date.now()}-${idx}`,
+        id: `sv-${crypto.randomUUID()}`,
       })),
-      maintenanceItems: activeQuote.maintenanceItems.map((i, idx) => ({
+      maintenanceItems: activeQuote.maintenanceItems.map((i) => ({
         ...i,
-        id: `mt-${Date.now()}-${idx}`,
+        id: `mt-${crypto.randomUUID()}`,
       })),
       createdAt: now,
       updatedAt: now,
@@ -177,7 +177,7 @@ export function QuotationBuilder({
   const addEquipmentRow = () => {
     if (!activeQuote) return;
     const nextItem: EquipmentLineItem = {
-      id: `eq-${Date.now()}`,
+      id: `eq-${crypto.randomUUID()}`,
       itemName: '',
       brandSpec: '',
       businessScope: 'CCTV Surveillance System',
@@ -211,7 +211,7 @@ export function QuotationBuilder({
   const addServiceRow = () => {
     if (!activeQuote) return;
     const nextItem: ServiceLineItem = {
-      id: `sv-${Date.now()}`,
+      id: `sv-${crypto.randomUUID()}`,
       serviceCategory: 'Installation',
       description: '',
       qty: 1,
@@ -241,7 +241,7 @@ export function QuotationBuilder({
   const addMaintenanceRow = () => {
     if (!activeQuote) return;
     const nextItem: MaintenanceLineItem = {
-      id: `mt-${Date.now()}`,
+      id: `mt-${crypto.randomUUID()}`,
       planName: 'Quarterly Preventive Maintenance Package',
       frequency: 'Annual',
       description: '4 scheduled preventive inspections per year + priority troubleshooting.',
@@ -294,7 +294,8 @@ export function QuotationBuilder({
   }
 
   return (
-    <div className="space-y-6">
+    <>
+    <div className={`space-y-6 ${showPreview ? 'no-print' : ''}`}>
       {/* Page Title & Action Row */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -1096,15 +1097,16 @@ export function QuotationBuilder({
           </div>
         </section>
       </div>
-
-      {/* Formal Quotation Print/PDF Preview Modal */}
-      {showPreview && (
-        <QuotationPreviewModal
-          quotation={activeQuote}
-          lang={lang}
-          onClose={() => setShowPreview(false)}
-        />
-      )}
     </div>
+
+    {/* Formal Quotation Print/PDF Preview Modal */}
+    {showPreview && (
+      <QuotationPreviewModal
+        quotation={activeQuote}
+        lang={lang}
+        onClose={() => setShowPreview(false)}
+      />
+    )}
+    </>
   );
 }

@@ -126,6 +126,7 @@ export default function App() {
   };
 
   const handleDeleteQuotation = (id: string) => {
+    const now = new Date().toISOString();
     setQuotations((prev) => {
       const remaining = prev.filter((q) => q.id !== id);
       if (activeQuotationId === id) {
@@ -133,6 +134,13 @@ export default function App() {
       }
       return remaining;
     });
+    setCrmRecords((prev) =>
+      prev.map((rec) =>
+        rec.linkedQuotationId === id
+          ? { ...rec, linkedQuotationId: undefined, updatedAt: now }
+          : rec,
+      ),
+    );
   };
 
   const handleOpenCrmRecord = (recordId: string) => {
@@ -148,7 +156,7 @@ export default function App() {
   const handleCreateQuotationForRecord = (record: CrmRecord) => {
     const now = new Date().toISOString();
     const newQuote: EngineeringQuotation = {
-      id: `qt-${Date.now()}`,
+      id: `qt-${crypto.randomUUID()}`,
       quoteRef: generateNextQuoteRef(quotations),
       linkedCrmId: record.id,
       clientName: record.clientName,
@@ -161,7 +169,7 @@ export default function App() {
       validityDate: addDaysISO(30),
       equipmentItems: [
         {
-          id: `eq-${Date.now()}-1`,
+          id: `eq-${crypto.randomUUID()}`,
           itemName: 'Security System Hardware Package',
           brandSpec: record.technicalRequirements || 'As per site requirement',
           businessScope: record.businessScopes[0] || 'CCTV Surveillance System',
@@ -172,7 +180,7 @@ export default function App() {
       ],
       serviceItems: [
         {
-          id: `sv-${Date.now()}-1`,
+          id: `sv-${crypto.randomUUID()}`,
           serviceCategory: 'Design',
           description: 'Site Survey & System Design Proposal',
           qty: 1,
@@ -180,7 +188,7 @@ export default function App() {
           unitPrice: 600,
         },
         {
-          id: `sv-${Date.now()}-2`,
+          id: `sv-${crypto.randomUUID()}`,
           serviceCategory: 'Installation',
           description: 'On-Site Cabling, Conduit & Hardware Installation',
           qty: 1,
@@ -188,7 +196,7 @@ export default function App() {
           unitPrice: 1800,
         },
         {
-          id: `sv-${Date.now()}-3`,
+          id: `sv-${crypto.randomUUID()}`,
           serviceCategory: 'Testing & Commissioning',
           description: 'System Testing, Commissioning & Client Handover',
           qty: 1,
@@ -198,7 +206,7 @@ export default function App() {
       ],
       maintenanceItems: [
         {
-          id: `mt-${Date.now()}-1`,
+          id: `mt-${crypto.randomUUID()}`,
           planName: 'Annual Preventive Maintenance & Technical Support',
           frequency: 'Annual',
           description:

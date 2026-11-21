@@ -100,7 +100,11 @@ export function CrmBoard({
     let inQuoteOrNegotiating = 0;
 
     for (const r of records) {
-      const val = getRecordQuoteValue(r);
+      const linkedQuote = r.linkedQuotationId
+        ? quotationById.get(r.linkedQuotationId)
+        : undefined;
+      const val = linkedQuote ? computeQuotationTotals(linkedQuote).grandTotal : 0;
+
       if (r.dealStatus === 'Closed Won') {
         closedWon += val;
       } else if (r.dealStatus !== 'Closed Lost') {
@@ -148,7 +152,7 @@ export function CrmBoard({
   const handleCreateNewRecord = () => {
     const now = new Date().toISOString();
     const fresh: CrmRecord = {
-      id: `crm-${Date.now()}`,
+      id: `crm-${crypto.randomUUID()}`,
       clientName: lang === 'en' ? 'New Client Sdn Bhd' : '新客户有限公司',
       contactPerson: '',
       contactPhone: '',

@@ -294,17 +294,25 @@ async function startServer() {
 
   app.post('/api/parse-notes', async (req, res) => {
     try {
-      const { notes, voiceTranscript, imageBase64, imageMimeType, todayDate } =
-        req.body as {
-          notes?: string;
-          voiceTranscript?: string;
-          imageBase64?: string;
-          imageMimeType?: string;
-          todayDate?: string;
-        };
+      const body =
+        req.body && typeof req.body === 'object'
+          ? (req.body as Record<string, unknown>)
+          : {};
 
-      const trimmedNotes = (notes ?? '').trim();
-      const trimmedVoice = (voiceTranscript ?? '').trim();
+      const notes = typeof body.notes === 'string' ? body.notes : '';
+      const voiceTranscript =
+        typeof body.voiceTranscript === 'string' ? body.voiceTranscript : '';
+      const imageBase64 =
+        typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
+      const imageMimeType =
+        typeof body.imageMimeType === 'string' ? body.imageMimeType : '';
+      const todayDate =
+        typeof body.todayDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.todayDate)
+          ? body.todayDate
+          : '';
+
+      const trimmedNotes = notes.trim();
+      const trimmedVoice = voiceTranscript.trim();
 
       if (!trimmedNotes && !trimmedVoice && !imageBase64) {
         res.status(400).json({
@@ -377,11 +385,22 @@ async function startServer() {
           ? Number((err as { status?: number }).status)
           : 500;
 
-      if (status === 403 || status === 400 || message.includes('API_KEY')) {
+      const isKeyError =
+        status === 403 ||
+        message.includes('API_KEY') ||
+        message.toLowerCase().includes('api key');
+
+      if (isKeyError) {
         res.status(status === 403 ? 403 : 400).json({
           error:
             'Gemini API key error. Please verify your API key in Settings > Secrets.',
-          details: message,
+        });
+        return;
+      }
+
+      if (status === 400) {
+        res.status(400).json({
+          error: 'Invalid request payload or unsupported image format.',
         });
         return;
       }
@@ -390,14 +409,13 @@ async function startServer() {
         res.status(429).json({
           error:
             'API rate limit exceeded. Please wait a moment and try again, or check your quota in Settings > Secrets.',
-          details: message,
         });
         return;
       }
 
       console.error('Error in /api/parse-notes:', err);
       res.status(500).json({
-        error: message,
+        error: 'Failed to parse meeting notes. Please try again.',
       });
     }
   });

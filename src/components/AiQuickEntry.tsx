@@ -235,8 +235,8 @@ export function AiQuickEntry({
       }
 
       const nowIso = new Date().toISOString();
-      const crmId = `crm-${Date.now()}`;
-      const quoteId = `qt-${Date.now()}`;
+      const crmId = `crm-${crypto.randomUUID()}`;
+      const quoteId = `qt-${crypto.randomUUID()}`;
       const quoteRef = generateNextQuoteRef(existingQuotations);
 
       const newRecord: CrmRecord = {
@@ -276,8 +276,8 @@ export function AiQuickEntry({
         preparedBy: 'Masbina Engineering Sales Team',
         issueDate: getTodayISO(),
         validityDate: addDaysISO(30),
-        equipmentItems: (data.quotationDraft.equipmentItems || []).map((item, idx) => ({
-          id: `eq-${Date.now()}-${idx}`,
+        equipmentItems: (data.quotationDraft.equipmentItems || []).map((item) => ({
+          id: `eq-${crypto.randomUUID()}`,
           itemName: item.itemName,
           brandSpec: item.brandSpec || 'Standard Industrial Spec',
           businessScope: item.businessScope || 'CCTV Surveillance System',
@@ -285,16 +285,16 @@ export function AiQuickEntry({
           unit: item.unit || 'Units',
           unitPrice: Number(item.unitPrice) || 0,
         })),
-        serviceItems: (data.quotationDraft.serviceItems || []).map((item, idx) => ({
-          id: `sv-${Date.now()}-${idx}`,
+        serviceItems: (data.quotationDraft.serviceItems || []).map((item) => ({
+          id: `sv-${crypto.randomUUID()}`,
           serviceCategory: item.serviceCategory || 'Installation',
           description: item.description,
           qty: Number(item.qty) || 1,
           unit: item.unit || 'Lot',
           unitPrice: Number(item.unitPrice) || 0,
         })),
-        maintenanceItems: (data.quotationDraft.maintenanceItems || []).map((item, idx) => ({
-          id: `mt-${Date.now()}-${idx}`,
+        maintenanceItems: (data.quotationDraft.maintenanceItems || []).map((item) => ({
+          id: `mt-${crypto.randomUUID()}`,
           planName: item.planName,
           frequency: item.frequency || 'Annual',
           description: item.description,
