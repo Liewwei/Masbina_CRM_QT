@@ -92,6 +92,7 @@ MULTIMODAL DOCUMENT & SITE IMAGE ANALYSIS:
 - When a PDF document (tender, BOQ, engineering specification, quotation comparison, floor plan), text/CSV/Markdown document, or site image/photo is attached, thoroughly read EVERY page, table, callout, and visual detail.
 - Extract all client details, site location, camera/door/gate/alarm quantities, technical specifications, cable/conduit/installation requirements, and target deadlines.
 - Map EVERY identified CCTV hardware, engineering service (Design, Installation per point, Testing & Commissioning), and preventive maintenance item directly to Masbina Technology S/B's exact MYR Standard Price Catalog above so both "salesReport" and "quotationDraft" are accurate and ready to issue.
+- LARGE TENDER / BOQ CONSOLIDATION RULE: For large multi-page tender or BOQ documents, consolidate repetitive or minor sub-components (such as screws, connectors, RJ45 plugs, patch cords, brackets, fasteners, conduit accessories) into clean grouped line items, and keep "equipmentItems" within at most 25 clear, high-impact items so the structured JSON response is always complete and never truncated.
 
 DATE HANDLING:
 - Today's reference date will be provided in the prompt. Convert relative dates like "this Friday", "next Tuesday", "within 2 days" into an exact YYYY-MM-DD string for "nextFollowUpDate".
@@ -456,9 +457,20 @@ async function startServer() {
             systemInstruction: MASBINA_SYSTEM_INSTRUCTION,
             responseMimeType: 'application/json',
             responseSchema: PARSE_RESPONSE_SCHEMA,
+            maxOutputTokens: 32768,
+            thinkingConfig: { thinkingBudget: 1024 },
           },
         }),
       );
+
+      const finishReason = response.candidates?.[0]?.finishReason;
+      if (finishReason === 'MAX_TOKENS') {
+        res.status(422).json({
+          error:
+            'The uploaded document was too long and the AI output reached its token limit. Please upload only the BOQ / Scope of Work pages or paste the key requirements.',
+        });
+        return;
+      }
 
       const rawText = (response.text ?? '').trim();
       if (!rawText) {
@@ -468,11 +480,17 @@ async function startServer() {
         return;
       }
 
-      const parsed = JSON.parse(rawText);
+      const cleanedText = rawText
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```\s*$/, '')
+        .trim();
+
+      const parsed = JSON.parse(cleanedText);
       res.json(parsed);
     } catch (err: unknown) {
       const message =
-        err instanceof Error ? err.message : 'Failed to parse meeting notes.';
+        err instanceof Error ? err.message : 'Unexpected parsing error.';
       const status =
         typeof err === 'object' && err !== null && 'status' in err
           ? Number((err as { status?: number }).status)
@@ -493,7 +511,7 @@ async function startServer() {
 
       if (status === 400) {
         res.status(400).json({
-          error: 'Invalid request payload or unsupported image format.',
+          error: `Invalid request or unsupported document format: ${message}`,
         });
         return;
       }
@@ -508,7 +526,7 @@ async function startServer() {
 
       console.error('Error in /api/parse-notes:', err);
       res.status(500).json({
-        error: 'Failed to parse meeting notes. Please try again.',
+        error: `Failed to parse document: ${message}`,
       });
     }
   });
