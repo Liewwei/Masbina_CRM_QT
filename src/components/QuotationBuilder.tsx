@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Camera,
+  ChevronDown,
   Copy,
   Eye,
   Plus,
@@ -25,6 +27,11 @@ import {
   generateNextQuoteRef,
   getTodayISO,
 } from '../data/seedData.ts';
+import {
+  CCTV_QUOTATION_PRESETS,
+  type CctvQuotationPreset,
+  createQuotationFromCctvPreset,
+} from '../data/priceCatalog.ts';
 import { QuotationPreviewModal } from './QuotationPreviewModal.tsx';
 
 interface QuotationBuilderProps {
@@ -36,6 +43,7 @@ interface QuotationBuilderProps {
   onUpdateQuotation: (quote: EngineeringQuotation) => void;
   onDeleteQuotation: (id: string) => void;
   canDelete: boolean;
+  preparedBy?: string;
 }
 
 export function QuotationBuilder({
@@ -47,10 +55,36 @@ export function QuotationBuilder({
   onUpdateQuotation,
   onDeleteQuotation,
   canDelete,
+  preparedBy,
 }: QuotationBuilderProps) {
   const t = UI_TEXT[lang];
   const [showPreview, setShowPreview] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [presetMenuOpen, setPresetMenuOpen] = useState(false);
+  const presetMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!presetMenuOpen) return;
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (
+        presetMenuRef.current &&
+        !presetMenuRef.current.contains(event.target as Node)
+      ) {
+        setPresetMenuOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPresetMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [presetMenuOpen]);
 
   const activeQuote = useMemo(() => {
     if (quotations.length === 0) return null;
@@ -81,7 +115,7 @@ export function QuotationBuilder({
       contactPhone: '',
       siteLocation: '',
       projectTitle: 'Integrated Security & Automation System Proposal',
-      preparedBy: 'Masbina Engineering Sales Team',
+      preparedBy: preparedBy || 'Masbina Engineering Sales Team',
       issueDate: getTodayISO(),
       validityDate: addDaysISO(30),
       equipmentItems: [
@@ -144,6 +178,20 @@ export function QuotationBuilder({
     onAddQuotation(fresh);
     onSelectQuotation(fresh.id);
     setConfirmDelete(false);
+  };
+
+  const handleApplyCctvPreset = (preset: CctvQuotationPreset) => {
+    const fresh = createQuotationFromCctvPreset(preset, {
+      quoteRef: generateNextQuoteRef(quotations),
+      issueDate: getTodayISO(),
+      validityDate: addDaysISO(30),
+      termsAndConditions: DEFAULT_TERMS_AND_CONDITIONS,
+      preparedBy: preparedBy || 'Masbina Engineering Sales Team',
+    });
+    onAddQuotation(fresh);
+    onSelectQuotation(fresh.id);
+    setConfirmDelete(false);
+    setPresetMenuOpen(false);
   };
 
   const handleDuplicate = () => {
@@ -278,19 +326,49 @@ export function QuotationBuilder({
 
   if (!activeQuote || !totals) {
     return (
-      <div className="rounded-lg border border-slate-200 bg-white px-6 py-16 text-center">
+      <div className="rounded-lg border border-slate-200 bg-white px-6 py-14 text-center">
         <h1 className="text-lg font-semibold text-slate-900">
           {t.emptyQuotationTitle}
         </h1>
         <p className="mt-1.5 text-sm text-slate-600">{t.emptyQuotationDesc}</p>
-        <button
-          type="button"
-          onClick={handleCreateBlank}
-          className="mt-5 inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-xs font-medium text-white hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4" />
-          {t.newQuotationBtn}
-        </button>
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleCreateBlank}
+            className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 whitespace-nowrap"
+          >
+            <Plus className="h-4 w-4" />
+            {t.newQuotationBtn}
+          </button>
+        </div>
+
+        <div className="mx-auto mt-8 max-w-2xl border-t border-slate-200 pt-6">
+          <p className="text-xs font-semibold text-slate-700">
+            {t.quickCctvTemplateBtn}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            {t.quickCctvTemplateHint}
+          </p>
+          <div className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {CCTV_QUOTATION_PRESETS.map((preset) => (
+              <button
+                key={preset.id}
+                type="button"
+                onClick={() => handleApplyCctvPreset(preset)}
+                className="flex flex-col items-start rounded-md border border-slate-200 bg-slate-50/70 px-3.5 py-3 text-left hover:border-blue-400 hover:bg-blue-50/40 transition-colors"
+              >
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-900">
+                  <Camera className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                  {lang === 'zh' ? preset.labelZh : preset.labelEn}
+                </span>
+                <span className="mt-1 text-[11px] text-slate-500 leading-snug">
+                  {lang === 'zh' ? preset.summaryZh : preset.summaryEn}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -308,6 +386,54 @@ export function QuotationBuilder({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Quick CCTV Template Dropdown */}
+          <div className="relative" ref={presetMenuRef}>
+            <button
+              type="button"
+              onClick={() => setPresetMenuOpen((prev) => !prev)}
+              aria-expanded={presetMenuOpen}
+              aria-haspopup="menu"
+              className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50/70 px-3.5 py-2 text-xs font-medium text-blue-800 hover:bg-blue-100/80 transition-colors whitespace-nowrap"
+            >
+              <Camera className="h-3.5 w-3.5 text-blue-600" />
+              {t.quickCctvTemplateBtn}
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-blue-600 transition-transform ${
+                  presetMenuOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {presetMenuOpen && (
+              <div
+                role="menu"
+                className="absolute left-0 sm:left-auto sm:right-0 z-40 mt-1.5 w-72 rounded-md border border-slate-200 bg-white py-1.5 shadow-lg"
+              >
+                <div className="border-b border-slate-100 px-3 py-1.5">
+                  <p className="text-[11px] font-medium text-slate-500">
+                    {t.quickCctvTemplateHint}
+                  </p>
+                </div>
+                {CCTV_QUOTATION_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => handleApplyCctvPreset(preset)}
+                    className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-slate-50 transition-colors"
+                  >
+                    <span className="text-xs font-semibold text-slate-900">
+                      {lang === 'zh' ? preset.labelZh : preset.labelEn}
+                    </span>
+                    <span className="mt-0.5 text-[11px] text-slate-500">
+                      {lang === 'zh' ? preset.summaryZh : preset.summaryEn}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={handleCreateBlank}

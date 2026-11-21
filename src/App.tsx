@@ -599,6 +599,7 @@ export default function App() {
                 onUpdateQuotation={handleUpdateQuotation}
                 onDeleteQuotation={handleDeleteQuotation}
                 canDelete={canDeleteRecordsAndQuotes}
+                preparedBy={currentUser.fullName}
               />
             )}
 

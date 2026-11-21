@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import { formatCctvCatalogForPrompt } from './src/data/priceCatalog.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -73,19 +74,19 @@ E. Allowed "siteType" values (pick exactly one):
 - "Industrial Park"
 - "Other"
 
-MALAYSIAN B2B ENGINEERING PRICING GUIDELINES (MYR / RM):
-- 4MP/5MP IP CCTV Camera (Hikvision / Dahua): RM 350 - RM 550 / unit
-- 8-Ch / 16-Ch / 32-Ch NVR + Surveillance HDD: RM 1,600 - RM 3,800 / set
+${formatCctvCatalogForPrompt()}
+
+OTHER MALAYSIAN B2B ENGINEERING PRICING GUIDELINES (MYR / RM — FOR NON-CCTV ITEMS):
 - Biometric / Facial / RFID Door Access Control (complete with EM Lock, PSU, Exit Button): RM 1,250 - RM 1,900 / door
 - Heavy-Duty Industrial Sliding Auto Gate (1200kg–1500kg motor + rack): RM 3,800 - RM 5,800 / set
 - Swing Auto Gate System (residential/commercial): RM 2,400 - RM 3,500 / set
 - Boom Barrier Gate (industrial): RM 4,200 - RM 5,500 / set
 - Hybrid Intrusion Alarm System (panel + sensors + siren + communicator): RM 2,200 - RM 3,800 / set
 - Section B Engineering Services: ALWAYS automatically include relevant line items for:
-  1. "Design" (System Design, Site Layout & Network/Cabling Plan — typically RM 500 - RM 1,500)
-  2. "Installation" (Cabling, Conduit, Hardware Mounting & Termination — scaled realistically to camera/door/gate count)
-  3. "Testing & Commissioning" (System Configuration, Mobile Viewing, Handover & User Training — typically RM 600 - RM 1,800)
-- Section C Optional Maintenance Plan: ALWAYS include 1–2 realistic preventive maintenance options (Annual or Quarterly Maintenance & Support).
+  1. "Design" (for CCTV, use the exact catalog rates RM 250–RM 800 / Lot; for multi-system projects scale accordingly up to RM 1,500)
+  2. "Installation" (for CCTV, ALWAYS bill per camera point using RM 250 / RM 280 / RM 320 per Point with unit "Points" and qty matching total cameras; add non-CCTV installation items if doors/gates/alarms are requested)
+  3. "Testing & Commissioning" (for CCTV, use the exact catalog rates RM 300–RM 850 / Lot; scale up to RM 1,800 for multi-system projects)
+- Section C Optional Maintenance Plan: ALWAYS include 1–2 realistic preventive maintenance options (for CCTV, apply RM 600/yr Small, RM 1,100/yr Medium, or RM 2,200/yr Industrial Quarterly).
 
 DATE HANDLING:
 - Today's reference date will be provided in the prompt. Convert relative dates like "this Friday", "next Tuesday", "within 2 days" into an exact YYYY-MM-DD string for "nextFollowUpDate".
