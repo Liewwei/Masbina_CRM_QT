@@ -2,6 +2,7 @@ import { Printer, X } from 'lucide-react';
 import type { EngineeringQuotation, Language } from '../types/masbina.ts';
 import { UI_TEXT } from '../data/i18n.ts';
 import { computeQuotationTotals, formatRM } from '../data/seedData.ts';
+import { MasbinaLogo } from './MasbinaLogo.tsx';
 
 interface QuotationPreviewModalProps {
   quotation: EngineeringQuotation;
@@ -62,23 +63,10 @@ export function QuotationPreviewModal({
         <article className="px-8 py-8 sm:px-12 sm:py-10 text-slate-900 bg-white">
           {/* Corporate Letterhead */}
           <header className="flex flex-col justify-between gap-6 border-b-2 border-[#0F172A] pb-6 sm:flex-row sm:items-start">
-            <div>
-              <div className="flex items-center gap-3">
-                <svg
-                  width="34"
-                  height="34"
-                  viewBox="0 0 28 28"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <rect width="28" height="28" rx="6" fill="#0F172A" />
-                  <path
-                    d="M7 20V8H10.2L14 14.3L17.8 8H21V20H18.2V12.8L14.8 18.2H13.2L9.8 12.8V20H7Z"
-                    fill="white"
-                  />
-                </svg>
-                <div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-3.5">
+                <MasbinaLogo className="h-16 w-auto shrink-0" />
+                <div className="min-w-0">
                   <h2 className="text-xl font-bold tracking-tight text-[#0F172A]">
                     MASBINA TECHNOLOGY S/B
                   </h2>
@@ -94,32 +82,34 @@ export function QuotationPreviewModal({
               </p>
             </div>
 
-            <div className="sm:text-right">
-              <p className="text-lg font-bold tracking-wide text-[#2563EB]">
+            <div className="sm:text-right shrink-0">
+              <p className="text-lg font-bold tracking-wide text-[#2563EB] whitespace-nowrap">
                 QUOTATION
               </p>
               <dl className="mt-2 space-y-1 text-xs">
                 <div className="flex sm:justify-end gap-2">
-                  <dt className="text-slate-500">Ref No:</dt>
-                  <dd className="font-mono font-semibold text-slate-900 tabular-nums">
+                  <dt className="text-slate-500 whitespace-nowrap">Ref No:</dt>
+                  <dd className="font-mono font-semibold text-slate-900 tabular-nums whitespace-nowrap">
                     {quotation.quoteRef}
                   </dd>
                 </div>
                 <div className="flex sm:justify-end gap-2">
-                  <dt className="text-slate-500">Date:</dt>
-                  <dd className="font-mono text-slate-900 tabular-nums">
+                  <dt className="text-slate-500 whitespace-nowrap">Date:</dt>
+                  <dd className="font-mono text-slate-900 tabular-nums whitespace-nowrap">
                     {quotation.issueDate}
                   </dd>
                 </div>
                 <div className="flex sm:justify-end gap-2">
-                  <dt className="text-slate-500">Valid Until:</dt>
-                  <dd className="font-mono text-slate-900 tabular-nums">
+                  <dt className="text-slate-500 whitespace-nowrap">Valid Until:</dt>
+                  <dd className="font-mono text-slate-900 tabular-nums whitespace-nowrap">
                     {quotation.validityDate}
                   </dd>
                 </div>
                 <div className="flex sm:justify-end gap-2">
-                  <dt className="text-slate-500">Currency:</dt>
-                  <dd className="font-mono font-medium text-slate-900">MYR (RM)</dd>
+                  <dt className="text-slate-500 whitespace-nowrap">Currency:</dt>
+                  <dd className="font-mono font-medium text-slate-900 whitespace-nowrap">
+                    MYR (RM)
+                  </dd>
                 </div>
               </dl>
             </div>
