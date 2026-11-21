@@ -43,6 +43,7 @@ interface CrmBoardProps {
   onDeleteRecord: (id: string) => void;
   onOpenQuotation: (quotationId: string) => void;
   onCreateQuotationForRecord: (record: CrmRecord) => void;
+  canDelete: boolean;
 }
 
 function getStatusTextClass(status: DealStatus): string {
@@ -71,6 +72,7 @@ export function CrmBoard({
   onDeleteRecord,
   onOpenQuotation,
   onCreateQuotationForRecord,
+  canDelete,
 }: CrmBoardProps) {
   const t = UI_TEXT[lang];
 
@@ -617,35 +619,39 @@ export function CrmBoard({
 
             {/* Footer Actions: Linked Quotation & Delete */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-3.5">
-              {confirmDeleteId === selectedRecord.id ? (
-                <div className="flex items-center gap-2">
+              {canDelete ? (
+                confirmDeleteId === selectedRecord.id ? (
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDeleteRecord(selectedRecord.id);
+                        setConfirmDeleteId(null);
+                      }}
+                      className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                    >
+                      {t.confirmDelete}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      {t.cancel}
+                    </button>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      onDeleteRecord(selectedRecord.id);
-                      setConfirmDeleteId(null);
-                    }}
-                    className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                    onClick={() => setConfirmDeleteId(selectedRecord.id)}
+                    className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                   >
-                    {t.confirmDelete}
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {t.deleteRecord}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDeleteId(null)}
-                    className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                  >
-                    {t.cancel}
-                  </button>
-                </div>
+                )
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDeleteId(selectedRecord.id)}
-                  className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  {t.deleteRecord}
-                </button>
+                <span />
               )}
 
               {selectedRecord.linkedQuotationId &&

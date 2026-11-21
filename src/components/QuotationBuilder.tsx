@@ -35,6 +35,7 @@ interface QuotationBuilderProps {
   onAddQuotation: (quote: EngineeringQuotation) => void;
   onUpdateQuotation: (quote: EngineeringQuotation) => void;
   onDeleteQuotation: (id: string) => void;
+  canDelete: boolean;
 }
 
 export function QuotationBuilder({
@@ -45,6 +46,7 @@ export function QuotationBuilder({
   onAddQuotation,
   onUpdateQuotation,
   onDeleteQuotation,
+  canDelete,
 }: QuotationBuilderProps) {
   const t = UI_TEXT[lang];
   const [showPreview, setShowPreview] = useState(false);
@@ -360,38 +362,40 @@ export function QuotationBuilder({
           </select>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          {confirmDelete ? (
-            <>
+        {canDelete && (
+          <div className="flex items-center gap-2 shrink-0">
+            {confirmDelete ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteQuotation(activeQuote.id);
+                    setConfirmDelete(false);
+                  }}
+                  className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                >
+                  {t.confirmDelete}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  {t.cancel}
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                onClick={() => {
-                  onDeleteQuotation(activeQuote.id);
-                  setConfirmDelete(false);
-                }}
-                className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700"
+                onClick={() => setConfirmDelete(true)}
+                className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
               >
-                {t.confirmDelete}
+                <Trash2 className="h-3.5 w-3.5" />
+                {lang === 'en' ? 'Delete' : '删除'}
               </button>
-              <button
-                type="button"
-                onClick={() => setConfirmDelete(false)}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-              >
-                {t.cancel}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              {lang === 'en' ? 'Delete' : '删除'}
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Quotation Header Metadata */}

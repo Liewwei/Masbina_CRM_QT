@@ -1,4 +1,5 @@
 import type {
+  AppUser,
   CrmRecord,
   EngineeringQuotation,
   QuotationTotals,
@@ -86,6 +87,50 @@ export function addDaysISO(days: number): string {
   d.setDate(d.getDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+export function isValidPassword(password: string): boolean {
+  return password.length > 6;
+}
+
+export function generateSixDigitCode(): string {
+  const array = new Uint32Array(1);
+  window.crypto.getRandomValues(array);
+  const code = 100000 + (array[0] % 900000);
+  return String(code);
+}
+
+export const INITIAL_USERS: AppUser[] = [
+  {
+    id: 'usr-seed-admin',
+    fullName: 'Daniel Lim',
+    email: 'admin@masbina.com.my',
+    password: 'Admin@1234',
+    role: 'Admin',
+    status: 'Active',
+    createdAt: '2026-01-10T01:00:00.000Z',
+    lastLoginAt: '2026-11-20T01:30:00.000Z',
+  },
+  {
+    id: 'usr-seed-manager',
+    fullName: 'Marcus Tan',
+    email: 'manager@masbina.com.my',
+    password: 'Manager@1234',
+    role: 'Manager',
+    status: 'Active',
+    createdAt: '2026-02-14T02:15:00.000Z',
+    lastLoginAt: '2026-11-19T09:10:00.000Z',
+  },
+  {
+    id: 'usr-seed-tech',
+    fullName: 'Afiq Rahman',
+    email: 'tech@masbina.com.my',
+    password: 'Tech@1234',
+    role: 'Technical',
+    status: 'Active',
+    createdAt: '2026-03-05T04:00:00.000Z',
+    lastLoginAt: '2026-11-18T14:45:00.000Z',
+  },
+];
 
 export const INITIAL_CRM_RECORDS: CrmRecord[] = [
   {

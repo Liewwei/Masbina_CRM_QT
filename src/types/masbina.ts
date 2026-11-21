@@ -1,6 +1,33 @@
 export type Language = 'en' | 'zh';
 
-export type NavSection = 'quick-entry' | 'crm-board' | 'quotation-builder';
+export type NavSection =
+  | 'quick-entry'
+  | 'crm-board'
+  | 'quotation-builder'
+  | 'user-management';
+
+export type UserRole = 'Admin' | 'Manager' | 'Technical';
+
+export type UserStatus = 'Active' | 'Suspended';
+
+export interface AppUser {
+  id: string;
+  fullName: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  status: UserStatus;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+export interface AuthSession {
+  userId: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  signedInAt: string;
+}
 
 export type BusinessScope =
   | 'CCTV Surveillance System'
@@ -209,3 +236,5 @@ export const ALL_SITE_TYPES: SiteType[] = [
   'Industrial Park',
   'Other',
 ];
+
+export const ALL_USER_ROLES: UserRole[] = ['Admin', 'Manager', 'Technical'];

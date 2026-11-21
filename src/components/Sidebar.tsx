@@ -1,12 +1,15 @@
 import {
   FileSpreadsheet,
+  LogOut,
   Menu,
+  Shield,
   Sparkles,
   Users,
   X,
 } from 'lucide-react';
-import type { Language, NavSection } from '../types/masbina.ts';
+import type { AppUser, Language, NavSection } from '../types/masbina.ts';
 import { UI_TEXT } from '../data/i18n.ts';
+import { RoleBadge } from './RoleBadge.tsx';
 
 interface SidebarProps {
   activeSection: NavSection;
@@ -15,6 +18,9 @@ interface SidebarProps {
   onChangeLang: (lang: Language) => void;
   crmCount: number;
   quotationCount: number;
+  userCount: number;
+  currentUser: AppUser;
+  onSignOut: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
 }
@@ -26,6 +32,9 @@ export function Sidebar({
   onChangeLang,
   crmCount,
   quotationCount,
+  userCount,
+  currentUser,
+  onSignOut,
   mobileOpen,
   onCloseMobile,
 }: SidebarProps) {
@@ -58,6 +67,17 @@ export function Sidebar({
       icon: FileSpreadsheet,
       count: quotationCount,
     },
+    ...(currentUser.role === 'Admin'
+      ? [
+          {
+            id: 'user-management' as NavSection,
+            index: '04',
+            label: t.navUserManagement,
+            icon: Shield,
+            count: userCount,
+          },
+        ]
+      : []),
   ];
 
   const handleNavClick = (section: NavSection) => {
@@ -123,7 +143,9 @@ export function Sidebar({
               <span className="flex items-center gap-3 min-w-0">
                 <Icon
                   className={`h-4 w-4 shrink-0 ${
-                    isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'
+                    isActive
+                      ? 'text-white'
+                      : 'text-slate-400 group-hover:text-slate-200'
                   }`}
                 />
                 <span className="truncate whitespace-nowrap">
@@ -151,8 +173,32 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* Bottom Controls: Language Switcher & Scope Reference */}
+      {/* Bottom Controls: Active User Session, Sign Out & Language Switcher */}
       <div className="border-t border-slate-800 px-4 py-4 space-y-4">
+        {/* Logged-in User Profile & Sign Out */}
+        <div className="rounded-md border border-slate-800 bg-slate-900/80 p-3 space-y-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-white">
+                {currentUser.fullName}
+              </p>
+              <p className="truncate font-mono text-[11px] text-slate-400">
+                {currentUser.email}
+              </p>
+            </div>
+            <RoleBadge role={currentUser.role} lang={lang} surface="dark" />
+          </div>
+
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded border border-slate-700 bg-slate-800/70 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-700 hover:text-white transition-colors whitespace-nowrap"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            {t.signOut}
+          </button>
+        </div>
+
         <div>
           <div className="mb-2 flex items-center justify-between text-xs text-slate-400">
             <span>{lang === 'en' ? 'Interface Language' : '界面语言'}</span>

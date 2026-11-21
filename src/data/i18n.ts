@@ -4,6 +4,8 @@ import type {
   EngineeringServiceType,
   Language,
   SiteType,
+  UserRole,
+  UserStatus,
   WorkflowStage,
 } from '../types/masbina.ts';
 
@@ -80,6 +82,17 @@ export const SITE_TYPE_LABELS: Record<SiteType, { en: string; zh: string }> = {
   Other: { en: 'Other', zh: '其他场地' },
 };
 
+export const USER_ROLE_LABELS: Record<UserRole, { en: string; zh: string }> = {
+  Admin: { en: 'Admin', zh: '系统管理员' },
+  Manager: { en: 'Manager', zh: '销售经理' },
+  Technical: { en: 'Technical', zh: '技术工程师' },
+};
+
+export const USER_STATUS_LABELS: Record<UserStatus, { en: string; zh: string }> = {
+  Active: { en: 'Active', zh: '正常启用' },
+  Suspended: { en: 'Suspended', zh: '已停用' },
+};
+
 export interface SampleMeetingCase {
   id: string;
   labelEn: string;
@@ -137,8 +150,11 @@ export const UI_TEXT = {
     navQuickEntry: 'AI Quick Entry',
     navCrmBoard: 'CRM Follow-Up Board',
     navQuotationBuilder: 'Quotation Builder',
+    navUserManagement: 'User Management',
     currencyLabel: 'Currency: MYR (RM)',
     frameworkLabel: 'Masbina Engineering Framework',
+    signOut: 'Sign Out',
+    signedInAs: 'Signed in as',
 
     // Quick Entry
     quickEntryTitle: 'AI Meeting Note Parser',
@@ -255,6 +271,86 @@ export const UI_TEXT = {
     closePreview: 'Close Preview',
     emptyQuotationTitle: 'No quotations created yet',
     emptyQuotationDesc: 'Use AI Quick Entry or create a blank engineering quotation to begin.',
+
+    // Auth Page
+    authTitle: 'Engineering CRM & Quotation Portal',
+    authSubtitle:
+      'Role-based workspace for Masbina sales engineers, project managers, and system administrators.',
+    tabSignIn: 'Sign In',
+    tabSignUp: 'Sign Up',
+    tabForgotPassword: 'Forgot Password',
+    emailLabel: 'Work Email Address',
+    emailPlaceholder: 'name@masbina.com.my',
+    passwordLabel: 'Password',
+    passwordPlaceholder: 'Enter password (min. 7 characters)',
+    confirmPasswordLabel: 'Confirm Password',
+    confirmPasswordPlaceholder: 'Re-enter password',
+    fullNameLabel: 'Full Name',
+    fullNamePlaceholder: 'e.g., Kelvin Tan',
+    signInBtn: 'Sign In to Workspace',
+    signUpBtn: 'Create Account & Sign In',
+    quickDemoLabel: 'Quick Demo Login (1-Click Testing)',
+    passwordRuleError: 'Password must be more than 6 characters (at least 7 characters)',
+    passwordMatchError: 'Passwords do not match.',
+    fullNameRequired: 'Please enter your full name.',
+    emailInvalidError: 'Please enter a valid email address.',
+    duplicateEmailError: 'An account with this email address already exists.',
+    invalidCredentialsError: 'Invalid email address or password.',
+    accountSuspendedError:
+      'Your account is currently suspended. Please contact a Masbina Admin to restore access.',
+    signUpRoleNote:
+      'New self-registered accounts start with the Technical role. An Admin can upgrade permissions anytime.',
+    welcomeNewUserBanner:
+      'Welcome to Masbina Smart CRM! Your Technical account has been created and signed in.',
+    forgotStep1Desc:
+      'Enter your registered work email address to generate a 6-digit verification code.',
+    sendResetCodeBtn: 'Generate Verification Code',
+    emailNotFoundError: 'No registered account found for that email address.',
+    demoCodeNoticeTitle: 'Demo Verification Code (No External Email Server)',
+    demoCodeNoticeDesc: 'Use this 6-digit code below to reset your password:',
+    verificationCodeLabel: '6-Digit Verification Code',
+    verificationCodePlaceholder: 'Enter 6-digit code',
+    newPasswordLabel: 'New Password',
+    confirmNewPasswordLabel: 'Confirm New Password',
+    resetPasswordBtn: 'Verify Code & Reset Password',
+    invalidCodeError: 'Invalid or expired 6-digit verification code.',
+    passwordResetSuccess:
+      'Password updated successfully. You can now sign in with your new password.',
+    backToEmailStep: 'Use a different email',
+
+    // User Management
+    userMgmtTitle: 'User & Access Management',
+    userMgmtSubtitle:
+      'Manage team accounts, assign RBAC roles (Admin, Manager, Technical), reset passwords, and control account access.',
+    addUserBtn: 'Add User',
+    kpiTotalUsers: 'Total Users',
+    kpiActiveAdmins: 'Active Admins',
+    kpiManagers: 'Managers',
+    kpiTechnicalStaff: 'Technical Staff',
+    searchUsersPlaceholder: 'Search user by full name or email...',
+    allRoles: 'All Roles',
+    colUserName: 'User',
+    colRole: 'Role',
+    colUserStatus: 'Status',
+    colCreated: 'Created',
+    colLastLogin: 'Last Login',
+    colActions: 'Actions',
+    youTag: '(You)',
+    neverLoggedIn: 'Never',
+    actionResetPw: 'Reset Password',
+    actionSuspend: 'Suspend',
+    actionActivate: 'Activate',
+    actionDelete: 'Delete',
+    lastAdminGuardMsg: 'Cannot demote, suspend, or delete the last active Admin account.',
+    addUserModalTitle: 'Add Team Member',
+    addUserSubmitBtn: 'Create User Account',
+    initialRoleLabel: 'Assigned Role',
+    resetPwModalTitle: 'Reset User Password',
+    resetPwSubmitBtn: 'Update Password',
+    userCreatedNotice: 'User account created successfully.',
+    userPwUpdatedNotice: 'Password updated successfully.',
+    emptyUsersTitle: 'No matching user accounts',
+    emptyUsersDesc: 'Adjust your search or role filter to view team accounts.',
   },
   zh: {
     brandName: 'Masbina Technology S/B',
@@ -262,8 +358,11 @@ export const UI_TEXT = {
     navQuickEntry: '智能录入',
     navCrmBoard: '客户跟进表',
     navQuotationBuilder: '报价单制作',
+    navUserManagement: '用户权限管理',
     currencyLabel: '结算货币：MYR (RM)',
     frameworkLabel: 'Masbina 工程业务架构',
+    signOut: '退出登录',
+    signedInAs: '当前账号',
 
     // Quick Entry
     quickEntryTitle: '智能拜访记录解析器',
@@ -379,6 +478,79 @@ export const UI_TEXT = {
     closePreview: '关闭预览',
     emptyQuotationTitle: '尚未创建任何报价单',
     emptyQuotationDesc: '请通过「智能录入」自动生成，或点击新建空白工程报价单。',
+
+    // Auth Page
+    authTitle: '智能工程 CRM 与报价系统',
+    authSubtitle: '面向 Masbina 销售工程师、项目经理及系统管理员的角色权限工作台。',
+    tabSignIn: '登录',
+    tabSignUp: '注册新账号',
+    tabForgotPassword: '忘记密码',
+    emailLabel: '工作邮箱',
+    emailPlaceholder: 'name@masbina.com.my',
+    passwordLabel: '登录密码',
+    passwordPlaceholder: '请输入密码（至少 7 位字符）',
+    confirmPasswordLabel: '确认密码',
+    confirmPasswordPlaceholder: '请再次输入密码',
+    fullNameLabel: '真实姓名',
+    fullNamePlaceholder: '例如：陈伟明',
+    signInBtn: '登录系统',
+    signUpBtn: '创建账号并立即登录',
+    quickDemoLabel: '一键演示登录（快速测试不同角色）',
+    passwordRuleError: '密码长度必须超过 6 个字符（至少 7 位）',
+    passwordMatchError: '两次输入的密码不一致。',
+    fullNameRequired: '请输入您的姓名。',
+    emailInvalidError: '请输入有效的邮箱地址。',
+    duplicateEmailError: '该邮箱已被注册，请直接登录或更换邮箱。',
+    invalidCredentialsError: '邮箱地址或密码不正确。',
+    accountSuspendedError: '您的账号已被停用，请联系系统管理员 (Admin) 恢复权限。',
+    signUpRoleNote: '自助注册账号默认分配为「技术工程师 (Technical)」权限，如需升级请联系系统管理员。',
+    welcomeNewUserBanner: '欢迎加入 Masbina Smart CRM！您的技术工程师账号已创建并自动登录。',
+    forgotStep1Desc: '请输入已注册的工作邮箱，系统将生成 6 位数字验证码用于重置密码。',
+    sendResetCodeBtn: '获取 6 位验证码',
+    emailNotFoundError: '未找到该邮箱对应的注册账号。',
+    demoCodeNoticeTitle: '演示验证码通知（免外部邮件服务器）',
+    demoCodeNoticeDesc: '请在下方输入此 6 位验证码以完成密码重置：',
+    verificationCodeLabel: '6 位验证码',
+    verificationCodePlaceholder: '请输入 6 位数字验证码',
+    newPasswordLabel: '新密码',
+    confirmNewPasswordLabel: '确认新密码',
+    resetPasswordBtn: '验证并重置密码',
+    invalidCodeError: '验证码错误或已失效，请重新检查。',
+    passwordResetSuccess: '密码已成功重置，请使用新密码登录。',
+    backToEmailStep: '更换其他邮箱',
+
+    // User Management
+    userMgmtTitle: '用户与角色权限管理',
+    userMgmtSubtitle: '管理团队成员账号、分配角色权限 (Admin / Manager / Technical)、重置密码及启停账号状态。',
+    addUserBtn: '新增用户',
+    kpiTotalUsers: '总用户数',
+    kpiActiveAdmins: '活跃管理员',
+    kpiManagers: '销售经理',
+    kpiTechnicalStaff: '技术工程师',
+    searchUsersPlaceholder: '按姓名或邮箱搜索用户...',
+    allRoles: '全部角色',
+    colUserName: '用户信息',
+    colRole: '系统角色',
+    colUserStatus: '账号状态',
+    colCreated: '创建时间',
+    colLastLogin: '最近登录',
+    colActions: '管理操作',
+    youTag: '（当前）',
+    neverLoggedIn: '尚未登录',
+    actionResetPw: '重置密码',
+    actionSuspend: '停用',
+    actionActivate: '启用',
+    actionDelete: '删除',
+    lastAdminGuardMsg: '系统必须至少保留一名活跃管理员，无法降级、停用或删除最后一个管理员账号。',
+    addUserModalTitle: '新增团队成员账号',
+    addUserSubmitBtn: '创建用户账号',
+    initialRoleLabel: '初始角色权限',
+    resetPwModalTitle: '重置用户登录密码',
+    resetPwSubmitBtn: '确认更新密码',
+    userCreatedNotice: '新用户账号创建成功。',
+    userPwUpdatedNotice: '用户密码已成功重置。',
+    emptyUsersTitle: '未找到匹配的用户账号',
+    emptyUsersDesc: '请调整搜索关键词或角色筛选条件。',
   },
 } as const;
 
@@ -400,4 +572,12 @@ export function getStatusLabel(status: DealStatus, lang: Language): string {
 
 export function getSiteTypeLabel(siteType: SiteType, lang: Language): string {
   return SITE_TYPE_LABELS[siteType]?.[lang] ?? siteType;
+}
+
+export function getRoleLabel(role: UserRole, lang: Language): string {
+  return USER_ROLE_LABELS[role]?.[lang] ?? role;
+}
+
+export function getUserStatusLabel(status: UserStatus, lang: Language): string {
+  return USER_STATUS_LABELS[status]?.[lang] ?? status;
 }
