@@ -1,0 +1,845 @@
+import { useRef, useState } from 'react';
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  FileText,
+  ImagePlus,
+  Loader2,
+  Mic,
+  MicOff,
+  RotateCcw,
+  Sparkles,
+  Trash2,
+} from 'lucide-react';
+import type {
+  CrmRecord,
+  EngineeringQuotation,
+  Language,
+  ParsedMeetingResponse,
+} from '../types/masbina.ts';
+import {
+  SAMPLE_MEETING_CASES,
+  UI_TEXT,
+  getScopeLabel,
+  getServiceLabel,
+  getSiteTypeLabel,
+  getStageLabel,
+  getStatusLabel,
+} from '../data/i18n.ts';
+import {
+  DEFAULT_TERMS_AND_CONDITIONS,
+  addDaysISO,
+  computeQuotationTotals,
+  formatRM,
+  generateNextQuoteRef,
+  getTodayISO,
+} from '../data/seedData.ts';
+
+interface AiQuickEntryProps {
+  lang: Language;
+  existingQuotations: EngineeringQuotation[];
+  onSaveGeneratedBundle: (record: CrmRecord, quotation: EngineeringQuotation) => void;
+  onOpenCrmRecord: (recordId: string) => void;
+  onOpenQuotation: (quotationId: string) => void;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }> }) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+export function AiQuickEntry({
+  lang,
+  existingQuotations,
+  onSaveGeneratedBundle,
+  onOpenCrmRecord,
+  onOpenQuotation,
+}: AiQuickEntryProps) {
+  const t = UI_TEXT[lang];
+
+  const [notes, setNotes] = useState('');
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageMimeType, setImageMimeType] = useState<string | null>(null);
+  const [imageName, setImageName] = useState<string>('');
+
+  const [isListening, setIsListening] = useState(false);
+  const [speechNotice, setSpeechNotice] = useState<string | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [activePreviewTab, setActivePreviewTab] = useState<'report' | 'quotation'>('report');
+  const [lastResult, setLastResult] = useState<{
+    record: CrmRecord;
+    quotation: EngineeringQuotation;
+  } | null>(null);
+
+  const loadSampleCase = (caseIndex = 0) => {
+    const sample = SAMPLE_MEETING_CASES[caseIndex] ?? SAMPLE_MEETING_CASES[0];
+    setNotes(sample.notes);
+    setVoiceTranscript(sample.voiceTranscript ?? '');
+    setErrorMsg(null);
+  };
+
+  const handleClear = () => {
+    setNotes('');
+    setVoiceTranscript('');
+    setImagePreviewUrl(null);
+    setImageBase64(null);
+    setImageMimeType(null);
+    setImageName('');
+    setErrorMsg(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg(
+        lang === 'en'
+          ? 'Please select a valid PNG, JPG, or WEBP image file.'
+          : '请上传有效的 PNG、JPG 或 WEBP 图片文件。',
+      );
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setErrorMsg(
+        lang === 'en'
+          ? 'Image must be smaller than 8 MB.'
+          : '上传图片大小不能超过 8 MB。',
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+      const commaIdx = dataUrl.indexOf(',');
+      if (commaIdx !== -1) {
+        setImagePreviewUrl(dataUrl);
+        setImageBase64(dataUrl.slice(commaIdx + 1));
+        setImageMimeType(file.type);
+        setImageName(file.name);
+        setErrorMsg(null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeImage = () => {
+    setImagePreviewUrl(null);
+    setImageBase64(null);
+    setImageMimeType(null);
+    setImageName('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const toggleVoiceDictation = () => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    const win = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionInstance;
+      webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+    };
+    const SpeechRecognitionCtor = win.SpeechRecognition || win.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionCtor) {
+      setSpeechNotice(t.dictateUnsupported);
+      return;
+    }
+
+    setSpeechNotice(null);
+    const recognition = new SpeechRecognitionCtor();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = lang === 'zh' ? 'zh-CN' : 'en-MY';
+
+    recognition.onresult = (event) => {
+      let appended = '';
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          appended += `${event.results[i][0].transcript} `;
+        }
+      }
+      if (appended.trim()) {
+        setVoiceTranscript((prev) => (prev ? `${prev}\n${appended.trim()}` : appended.trim()));
+      }
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  };
+
+  const handleGenerate = async () => {
+    if (!notes.trim() && !voiceTranscript.trim() && !imageBase64) {
+      setErrorMsg(
+        lang === 'en'
+          ? 'Enter field notes, a voice transcript, or upload a site sketch first.'
+          : '请先输入拜访记录、粘贴语音文本或上传现场草图。',
+      );
+      return;
+    }
+
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const response = await fetch('/api/parse-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes,
+          voiceTranscript,
+          imageBase64,
+          imageMimeType,
+          todayDate: getTodayISO(),
+        }),
+      });
+
+      const data = (await response.json()) as ParsedMeetingResponse & {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed (${response.status})`);
+      }
+
+      const nowIso = new Date().toISOString();
+      const crmId = `crm-${Date.now()}`;
+      const quoteId = `qt-${Date.now()}`;
+      const quoteRef = generateNextQuoteRef(existingQuotations);
+
+      const newRecord: CrmRecord = {
+        id: crmId,
+        clientName: data.salesReport.clientName || 'Unnamed Client',
+        contactPerson: data.salesReport.contactPerson || '',
+        contactPhone: data.salesReport.contactPhone || '',
+        siteType: data.salesReport.siteType || 'Other',
+        location: data.salesReport.location || '',
+        businessScopes:
+          data.salesReport.businessScopes?.length > 0
+            ? data.salesReport.businessScopes
+            : ['CCTV Surveillance System'],
+        workflowStage: data.salesReport.workflowStage || 'Design & Quotation',
+        painPoints: data.salesReport.painPoints || '',
+        technicalRequirements: data.salesReport.technicalRequirements || '',
+        actionItems: data.salesReport.actionItems || [],
+        nextFollowUpDate: data.salesReport.nextFollowUpDate || addDaysISO(3),
+        dealStatus: data.salesReport.dealStatus || 'New Lead',
+        rawNotes: [notes, voiceTranscript].filter(Boolean).join('\n\n'),
+        linkedQuotationId: quoteId,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      const newQuotation: EngineeringQuotation = {
+        id: quoteId,
+        quoteRef,
+        linkedCrmId: crmId,
+        clientName: newRecord.clientName,
+        contactPerson: newRecord.contactPerson,
+        contactPhone: newRecord.contactPhone,
+        siteLocation: newRecord.location,
+        projectTitle:
+          data.quotationDraft.projectTitle ||
+          `Security & Automation Proposal for ${newRecord.clientName}`,
+        preparedBy: 'Masbina Engineering Sales Team',
+        issueDate: getTodayISO(),
+        validityDate: addDaysISO(30),
+        equipmentItems: (data.quotationDraft.equipmentItems || []).map((item, idx) => ({
+          id: `eq-${Date.now()}-${idx}`,
+          itemName: item.itemName,
+          brandSpec: item.brandSpec || 'Standard Industrial Spec',
+          businessScope: item.businessScope || 'CCTV Surveillance System',
+          qty: Number(item.qty) || 1,
+          unit: item.unit || 'Units',
+          unitPrice: Number(item.unitPrice) || 0,
+        })),
+        serviceItems: (data.quotationDraft.serviceItems || []).map((item, idx) => ({
+          id: `sv-${Date.now()}-${idx}`,
+          serviceCategory: item.serviceCategory || 'Installation',
+          description: item.description,
+          qty: Number(item.qty) || 1,
+          unit: item.unit || 'Lot',
+          unitPrice: Number(item.unitPrice) || 0,
+        })),
+        maintenanceItems: (data.quotationDraft.maintenanceItems || []).map((item, idx) => ({
+          id: `mt-${Date.now()}-${idx}`,
+          planName: item.planName,
+          frequency: item.frequency || 'Annual',
+          description: item.description,
+          qty: Number(item.qty) || 1,
+          unitPrice: Number(item.unitPrice) || 0,
+        })),
+        includeMaintenanceInTotal: false,
+        discountType: 'fixed',
+        discountValue: 0,
+        sstRate: 8,
+        termsAndConditions: [...DEFAULT_TERMS_AND_CONDITIONS],
+        notes: data.quotationDraft.notes || '',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      onSaveGeneratedBundle(newRecord, newQuotation);
+      setLastResult({ record: newRecord, quotation: newQuotation });
+      setActivePreviewTab('report');
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Unable to process meeting notes.';
+      setErrorMsg(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const previewTotals = lastResult
+    ? computeQuotationTotals(lastResult.quotation)
+    : null;
+
+  return (
+    <div className="space-y-6">
+      {/* Page Title & Quick Sample Bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            {t.quickEntryTitle}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+            {t.quickEntrySubtitle}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => loadSampleCase(0)}
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0"
+          >
+            <FileText className="h-3.5 w-3.5 text-blue-600" />
+            {t.loadSampleBtn}
+          </button>
+        </div>
+      </div>
+
+      {/* Quick Scenario Selector Strip */}
+      <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 py-3">
+        <span className="text-xs font-medium text-slate-500 mr-1 whitespace-nowrap">
+          {t.sampleCaseLabel}:
+        </span>
+        {SAMPLE_MEETING_CASES.map((sample, idx) => (
+          <button
+            key={sample.id}
+            type="button"
+            onClick={() => loadSampleCase(idx)}
+            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-blue-300 hover:text-blue-700 transition-colors whitespace-nowrap"
+          >
+            {lang === 'zh' ? sample.labelZh : sample.labelEn}
+          </button>
+        ))}
+      </div>
+
+      {/* Main 2-Column Workspace */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 items-stretch">
+        {/* Left Column: Input Console */}
+        <section className="xl:col-span-6 flex flex-col rounded-lg border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3.5">
+            <h2 className="text-sm font-semibold text-slate-900">
+              {t.rawNotesLabel}
+            </h2>
+            {(notes || voiceTranscript || imagePreviewUrl) && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-800"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                {t.clearBtn}
+              </button>
+            )}
+          </div>
+
+          <div className="flex-1 divide-y divide-slate-200">
+            {/* Primary Notes Textarea */}
+            <div className="p-5">
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={7}
+                placeholder={t.rawNotesPlaceholder}
+                className="w-full resize-y rounded-md border border-slate-200 bg-slate-50/60 px-3.5 py-3 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none"
+              />
+            </div>
+
+            {/* Voice-Note Transcript / Dictation Section */}
+            <div className="p-5 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-slate-700">
+                  {t.voiceTabLabel}
+                </label>
+                <button
+                  type="button"
+                  onClick={toggleVoiceDictation}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap shrink-0 ${
+                    isListening
+                      ? 'border-red-300 bg-red-50 text-red-700'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {isListening ? (
+                    <>
+                      <MicOff className="h-3.5 w-3.5" />
+                      {t.dictateStop}
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-3.5 w-3.5 text-blue-600" />
+                      {t.dictateStart}
+                    </>
+                  )}
+                </button>
+              </div>
+              {speechNotice && (
+                <p className="text-xs text-amber-700">{speechNotice}</p>
+              )}
+              <textarea
+                value={voiceTranscript}
+                onChange={(e) => setVoiceTranscript(e.target.value)}
+                rows={3}
+                placeholder={t.voicePlaceholder}
+                className="w-full resize-y rounded-md border border-slate-200 bg-slate-50/60 px-3.5 py-2.5 text-sm leading-relaxed text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none"
+              />
+            </div>
+
+            {/* Floor Plan / Site Sketch Upload */}
+            <div className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700">
+                    {t.imageUploadLabel}
+                  </label>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {t.imageUploadHint}
+                  </p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="site-sketch-upload"
+                />
+                <label
+                  htmlFor="site-sketch-upload"
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0"
+                >
+                  <ImagePlus className="h-3.5 w-3.5 text-blue-600" />
+                  {lang === 'en' ? 'Attach Drawing' : '上传图纸'}
+                </label>
+              </div>
+
+              {imagePreviewUrl && (
+                <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 p-2.5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={imagePreviewUrl}
+                      alt="Uploaded site sketch"
+                      referrerPolicy="no-referrer"
+                      className="h-14 w-20 rounded border border-slate-200 object-cover bg-white shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-medium text-slate-800">
+                        {imageName}
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        {lang === 'en'
+                          ? 'Attached for multimodal AI site analysis'
+                          : '已附加，AI 将同步解析平面图点位'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeImage}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 shrink-0"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {t.removeImage}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Action Footer */}
+          <div className="border-t border-slate-200 bg-slate-50/70 px-5 py-4 space-y-3">
+            {errorMsg && (
+              <div
+                role="alert"
+                className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3.5 py-2.5 text-xs text-red-800"
+              >
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t.generatingBtn}
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4" />
+                  {t.generateBtn}
+                </>
+              )}
+            </button>
+          </div>
+        </section>
+
+        {/* Right Column: Live Structured Output Preview */}
+        <section className="xl:col-span-6 flex flex-col rounded-lg border border-slate-200 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-3">
+            <div className="flex items-center gap-1 rounded-md bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setActivePreviewTab('report')}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                  activePreviewTab === 'report'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {t.tabReportPreview}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePreviewTab('quotation')}
+                className={`rounded px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${
+                  activePreviewTab === 'quotation'
+                    ? 'bg-white text-slate-900 shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {t.tabQuotePreview}
+              </button>
+            </div>
+
+            {lastResult && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                <Check className="h-3.5 w-3.5" />
+                {t.savedToWorkspace}
+              </span>
+            )}
+          </div>
+
+          <div className="flex-1 p-5">
+            {isLoading ? (
+              <div className="space-y-4 py-4" aria-busy="true">
+                <div className="h-5 w-2/5 animate-pulse rounded bg-slate-200" />
+                <div className="h-4 w-3/5 animate-pulse rounded bg-slate-100" />
+                <div className="border-t border-slate-100 pt-4 space-y-3">
+                  <div className="h-10 w-full animate-pulse rounded bg-slate-100" />
+                  <div className="h-10 w-full animate-pulse rounded bg-slate-100" />
+                  <div className="h-10 w-full animate-pulse rounded bg-slate-100" />
+                  <div className="h-20 w-full animate-pulse rounded bg-slate-100" />
+                </div>
+              </div>
+            ) : !lastResult ? (
+              <div className="flex h-full flex-col justify-between py-6">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900">
+                    {t.outputEmptyTitle}
+                  </h3>
+                  <p className="mt-2 max-w-lg text-sm leading-relaxed text-slate-600">
+                    {t.outputEmptyDesc}
+                  </p>
+                </div>
+
+                {/* Masbina Knowledge Base Reference Table */}
+                <div className="mt-8 border-t border-slate-200 pt-5 space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800">
+                      {lang === 'en' ? '01. Business Scopes' : '01. 主要业务范围'}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      {lang === 'en'
+                        ? 'CCTV Surveillance System · Alarm System · Access Control System · Automation System · Security Products Retail'
+                        : '闭路电视监控系统 · 防盗报警系统 · 门禁及出入管理系统 · 自动化系统 · 保安系统产品零售'}
+                    </p>
+                  </div>
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="text-xs font-semibold text-slate-800">
+                      {lang === 'en' ? '02. Engineering Services' : '02. 工程服务分类'}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      {lang === 'en'
+                        ? 'Consultation · Design · Supply & Retail · Installation · Testing & Commissioning · Maintenance & Support'
+                        : '客户咨询 · 系统设计 · 产品供应及零售 · 工程安装 · 测试与系统调试 · 定期维护及技术支援'}
+                    </p>
+                  </div>
+                  <div className="border-t border-slate-100 pt-3">
+                    <p className="text-xs font-semibold text-slate-800">
+                      {lang === 'en' ? '03. CRM Pipeline Stages' : '03. 工程跟进阶段'}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-600">
+                      {lang === 'en'
+                        ? 'Consultation → Design & Quotation → Supply & Installation → Testing & Handover → Maintenance & Support'
+                        : '客户需求分析 → 系统设计与报价 → 产品供应与现场施工 → 测试验收与交付 → 定期维护与售后'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : activePreviewTab === 'report' ? (
+              <div className="space-y-5">
+                <div className="border-b border-slate-200 pb-4">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      {lastResult.record.clientName}
+                    </h3>
+                    <span className="font-mono text-xs text-slate-500 tabular-nums">
+                      {lastResult.quotation.quoteRef}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
+                    <span>{lastResult.record.contactPerson || '—'}</span>
+                    {lastResult.record.contactPhone && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span className="font-mono tabular-nums">
+                          {lastResult.record.contactPhone}
+                        </span>
+                      </>
+                    )}
+                    <span aria-hidden="true">·</span>
+                    <span>{getSiteTypeLabel(lastResult.record.siteType, lang)}</span>
+                    {lastResult.record.location && (
+                      <>
+                        <span aria-hidden="true">·</span>
+                        <span>{lastResult.record.location}</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3 border-b border-slate-200 pb-4 text-xs">
+                  <div>
+                    <dt className="text-slate-500">{t.fieldWorkflowStage}</dt>
+                    <dd className="mt-1 font-semibold text-slate-900">
+                      {getStageLabel(lastResult.record.workflowStage, lang)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">{t.fieldDealStatus}</dt>
+                    <dd className="mt-1 font-semibold text-blue-700">
+                      {getStatusLabel(lastResult.record.dealStatus, lang)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">{t.fieldNextFollowUp}</dt>
+                    <dd className="mt-1 font-mono font-semibold text-slate-900 tabular-nums">
+                      {lastResult.record.nextFollowUpDate}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-500">
+                    {t.fieldScopes}
+                  </h4>
+                  <p className="mt-1 text-sm font-medium text-slate-900">
+                    {lastResult.record.businessScopes
+                      .map((s) => getScopeLabel(s, lang))
+                      .join(' · ')}
+                  </p>
+                </div>
+
+                <div className="space-y-3 border-t border-slate-200 pt-4">
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500">
+                      {t.fieldPainPoints}
+                    </h4>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-700">
+                      {lastResult.record.painPoints || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-slate-500">
+                      {t.fieldTechReq}
+                    </h4>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-700">
+                      {lastResult.record.technicalRequirements || '—'}
+                    </p>
+                  </div>
+                  {lastResult.record.actionItems.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-slate-500">
+                        {lang === 'en' ? 'Action Items' : '下一步行动项'}
+                      </h4>
+                      <ul className="mt-1.5 space-y-1 text-sm text-slate-700 list-disc pl-4">
+                        {lastResult.record.actionItems.map((item, idx) => (
+                          <li key={idx}>{item}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="border-b border-slate-200 pb-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      {lastResult.quotation.projectTitle}
+                    </h3>
+                    <span className="font-mono text-xs font-semibold text-blue-700 tabular-nums shrink-0">
+                      {lastResult.quotation.quoteRef}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {lastResult.quotation.clientName} · {lastResult.quotation.siteLocation}
+                  </p>
+                </div>
+
+                {/* Section A Preview */}
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-800 mb-2">
+                    {t.sectionATitle}
+                  </h4>
+                  <div className="overflow-x-auto border border-slate-200 rounded-md">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-50 border-b border-slate-200 text-slate-600">
+                        <tr>
+                          <th className="px-3 py-2 font-medium">{t.colItem}</th>
+                          <th className="px-3 py-2 font-medium text-right">{t.colQty}</th>
+                          <th className="px-3 py-2 font-medium text-right">{t.colTotal}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {lastResult.quotation.equipmentItems.map((item) => (
+                          <tr key={item.id}>
+                            <td className="px-3 py-2">
+                              <div className="font-medium text-slate-900">{item.itemName}</div>
+                              <div className="text-[11px] text-slate-500">{item.brandSpec}</div>
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-700 whitespace-nowrap">
+                              {item.qty} {item.unit}
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-900 whitespace-nowrap">
+                              {formatRM(item.qty * item.unitPrice)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Section B Preview */}
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-800 mb-2">
+                    {t.sectionBTitle}
+                  </h4>
+                  <div className="overflow-x-auto border border-slate-200 rounded-md">
+                    <table className="w-full text-left text-xs">
+                      <tbody className="divide-y divide-slate-100">
+                        {lastResult.quotation.serviceItems.map((svc) => (
+                          <tr key={svc.id}>
+                            <td className="px-3 py-2">
+                              <span className="font-semibold text-slate-800">
+                                {getServiceLabel(svc.serviceCategory, lang)}
+                              </span>
+                              <span className="mx-1.5 text-slate-300">/</span>
+                              <span className="text-slate-600">{svc.description}</span>
+                            </td>
+                            <td className="px-3 py-2 text-right font-mono tabular-nums text-slate-900 whitespace-nowrap">
+                              {formatRM(svc.qty * svc.unitPrice)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Financial Totals Strip */}
+                {previewTotals && (
+                  <div className="border-t border-slate-200 pt-3 flex items-baseline justify-between text-sm">
+                    <span className="text-xs text-slate-500">
+                      {lang === 'en'
+                        ? 'Estimated Total (incl. 8% SST, excl. optional maintenance)'
+                        : '预估报价总计（含 8% SST，不含选配维护）'}
+                    </span>
+                    <span className="font-mono text-base font-semibold text-slate-900 tabular-nums">
+                      {formatRM(previewTotals.grandTotal)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Direct Navigation Footer when Result Exists */}
+          {lastResult && (
+            <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-3.5">
+              <button
+                type="button"
+                onClick={() => onOpenCrmRecord(lastResult.record.id)}
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50 transition-colors whitespace-nowrap"
+              >
+                {t.openInCrm}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenQuotation(lastResult.quotation.id)}
+                className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3.5 py-2 text-xs font-medium text-white hover:bg-slate-800 transition-colors whitespace-nowrap"
+              >
+                {t.openInQuotation}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

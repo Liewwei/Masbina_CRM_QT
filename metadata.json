@@ -1,0 +1,6 @@
+{
+  "name": "Masbina Smart CRM & Engineering Quotation",
+  "description": "Bilingual B2B Engineering CRM and Automated Quotation System for Masbina Technology S/B — Integrated Security & Automation Solutions.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
