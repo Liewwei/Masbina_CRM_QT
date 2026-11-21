@@ -54,27 +54,43 @@ export default function App() {
 
   const [users, setUsers] = useState<AppUser[]>(() => {
     const loaded = loadFromStorage<AppUser[]>(STORAGE_KEYS.users, INITIAL_USERS);
-    return Array.isArray(loaded) && loaded.length > 0 ? loaded : INITIAL_USERS;
+    return Array.isArray(loaded)
+      ? loaded.filter((u) => !u.id.startsWith('usr-seed-'))
+      : INITIAL_USERS;
   });
 
-  const [session, setSession] = useState<AuthSession | null>(() =>
-    loadFromStorage<AuthSession | null>(STORAGE_KEYS.session, null),
-  );
+  const [session, setSession] = useState<AuthSession | null>(() => {
+    const loaded = loadFromStorage<AuthSession | null>(STORAGE_KEYS.session, null);
+    if (loaded && loaded.userId.startsWith('usr-seed-')) {
+      return null;
+    }
+    return loaded;
+  });
 
   const [welcomeBanner, setWelcomeBanner] = useState<string | null>(null);
 
   const [activeSection, setActiveSection] = useState<NavSection>('quick-entry');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  const [crmRecords, setCrmRecords] = useState<CrmRecord[]>(() =>
-    loadFromStorage<CrmRecord[]>(STORAGE_KEYS.crm, INITIAL_CRM_RECORDS),
-  );
-  const [quotations, setQuotations] = useState<EngineeringQuotation[]>(() =>
-    loadFromStorage<EngineeringQuotation[]>(
+  const [crmRecords, setCrmRecords] = useState<CrmRecord[]>(() => {
+    const loaded = loadFromStorage<CrmRecord[]>(
+      STORAGE_KEYS.crm,
+      INITIAL_CRM_RECORDS,
+    );
+    return Array.isArray(loaded)
+      ? loaded.filter((r) => !r.id.startsWith('crm-seed-'))
+      : INITIAL_CRM_RECORDS;
+  });
+
+  const [quotations, setQuotations] = useState<EngineeringQuotation[]>(() => {
+    const loaded = loadFromStorage<EngineeringQuotation[]>(
       STORAGE_KEYS.quotations,
       INITIAL_QUOTATIONS,
-    ),
-  );
+    );
+    return Array.isArray(loaded)
+      ? loaded.filter((q) => !q.id.startsWith('qt-seed-'))
+      : INITIAL_QUOTATIONS;
+  });
 
   const [selectedCrmId, setSelectedCrmId] = useState<string | null>(null);
   const [activeQuotationId, setActiveQuotationId] = useState<string | null>(

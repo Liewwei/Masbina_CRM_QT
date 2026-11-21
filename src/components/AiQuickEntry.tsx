@@ -3,7 +3,6 @@ import {
   AlertCircle,
   ArrowRight,
   Check,
-  FileText,
   ImagePlus,
   Loader2,
   Mic,
@@ -19,7 +18,6 @@ import type {
   ParsedMeetingResponse,
 } from '../types/masbina.ts';
 import {
-  SAMPLE_MEETING_CASES,
   UI_TEXT,
   getScopeLabel,
   getServiceLabel,
@@ -83,13 +81,6 @@ export function AiQuickEntry({
     record: CrmRecord;
     quotation: EngineeringQuotation;
   } | null>(null);
-
-  const loadSampleCase = (caseIndex = 0) => {
-    const sample = SAMPLE_MEETING_CASES[caseIndex] ?? SAMPLE_MEETING_CASES[0];
-    setNotes(sample.notes);
-    setVoiceTranscript(sample.voiceTranscript ?? '');
-    setErrorMsg(null);
-  };
 
   const handleClear = () => {
     setNotes('');
@@ -329,44 +320,14 @@ export function AiQuickEntry({
 
   return (
     <div className="space-y-6">
-      {/* Page Title & Quick Sample Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="max-w-3xl">
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-            {t.quickEntryTitle}
-          </h1>
-          <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-            {t.quickEntrySubtitle}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => loadSampleCase(0)}
-            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-800 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0"
-          >
-            <FileText className="h-3.5 w-3.5 text-blue-600" />
-            {t.loadSampleBtn}
-          </button>
-        </div>
-      </div>
-
-      {/* Quick Scenario Selector Strip */}
-      <div className="flex flex-wrap items-center gap-2 border-y border-slate-200 py-3">
-        <span className="text-xs font-medium text-slate-500 mr-1 whitespace-nowrap">
-          {t.sampleCaseLabel}:
-        </span>
-        {SAMPLE_MEETING_CASES.map((sample, idx) => (
-          <button
-            key={sample.id}
-            type="button"
-            onClick={() => loadSampleCase(idx)}
-            className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-blue-300 hover:text-blue-700 transition-colors whitespace-nowrap"
-          >
-            {lang === 'zh' ? sample.labelZh : sample.labelEn}
-          </button>
-        ))}
+      {/* Page Title */}
+      <div className="max-w-3xl">
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+          {t.quickEntryTitle}
+        </h1>
+        <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+          {t.quickEntrySubtitle}
+        </p>
       </div>
 
       {/* Main 2-Column Workspace */}

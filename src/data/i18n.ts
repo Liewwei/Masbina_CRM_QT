@@ -93,56 +93,6 @@ export const USER_STATUS_LABELS: Record<UserStatus, { en: string; zh: string }> 
   Suspended: { en: 'Suspended', zh: '已停用' },
 };
 
-export interface SampleMeetingCase {
-  id: string;
-  labelEn: string;
-  labelZh: string;
-  notes: string;
-  voiceTranscript?: string;
-}
-
-export const SAMPLE_MEETING_CASES: SampleMeetingCase[] = [
-  {
-    id: 'senai-factory',
-    labelEn: 'Senai Factory — CCTV, Biometric Access & Auto Gate',
-    labelZh: '士乃工业园工厂 — 监控、指纹门禁与电动门',
-    notes: `Met Mr. Tan (012-789 4521), Operations Manager at Sinergi Metalworks Sdn Bhd, Senai Industrial Park factory.
-Current site has blind spots at loading bay and old analog cameras keep dropping signal.
-Needs:
-- 16 units 4MP IP CCTV cameras (outdoor weatherproof bullet + indoor dome) with 1x 16-ch NVR + 8TB surveillance HDD
-- 2 doors biometric + RFID access control for main office & server room (with EM lock & exit button)
-- 1 heavy-duty sliding auto gate (1500kg industrial motor) for main lorry entrance
-Wants full cabling, installation, testing & commissioning completed by next month, plus optional annual preventive maintenance quote.
-Follow up with Mr. Tan this Friday with formal quotation and site layout proposal.`,
-    voiceTranscript: `刚从Senai Industrial Park出来，见了Sinergi Metalworks的Mr. Tan。厂区装货区很多盲点，旧的CCTV经常断线。他要换16粒4MP IP CCTV加一台NVR，办公室和机房做2个门的指纹门禁，大门口要装一台重型滑动电动门。下个月底前要全部安装调试好，这个星期五跟进发正式报价单。`,
-  },
-  {
-    id: 'puchong-office',
-    labelEn: 'Puchong HQ — Alarm System & Office Access Control',
-    labelZh: '蒲种总部 — 防盗报警与办公室门禁升级',
-    notes: `Site visit with Ms. Lim Wei Ling (016-332 8890) from Veridian Logistics HQ at Bandar Puteri Puchong (3-storey corporate office).
-Pain points: Staff still sharing physical keys, no intrusion alert after 7pm, need audit trail for finance & warehouse door.
-Requirements:
-- 1x 16-zone Hybrid Intrusion Alarm Panel with GSM/App notification, 8 PIR motion sensors, 4 magnetic door contacts, 2 indoor/outdoor sirens
-- 3 doors facial recognition & card access control with time attendance software
-- 4 units 4MP indoor dome CCTV for reception and corridor monitoring
-Stage: Ready for system design and quotation. Next follow-up next Tuesday morning.`,
-  },
-  {
-    id: 'mount-austin-bungalow',
-    labelEn: 'Mount Austin — Residential Security & Retail Supply',
-    labelZh: '茂奥斯汀住宅 — 别墅监控、报警与电动门',
-    notes: `Walk-in consultation with Dato' Rashid (019-711 2045) for his corner-lot bungalow at Taman Mount Austin, Johor Bahru.
-Looking for reliable home perimeter protection and smartphone viewing while travelling.
-Needs:
-- 8 units 5MP ColorVu IP CCTV cameras + 8-ch PoE NVR
-- Wireless perimeter alarm system (8 zones) + outdoor beam sensors
-- 1 set heavy-duty underground/arm swing auto gate with backup battery
-- Also purchasing 2 extra smart Wi-Fi indoor cameras over the counter (Security Products Retail).
-Wants quotation within 2 days and quarterly maintenance option.`,
-  },
-];
-
 export const UI_TEXT = {
   en: {
     brandName: 'Masbina Technology S/B',
@@ -160,7 +110,6 @@ export const UI_TEXT = {
     quickEntryTitle: 'AI Meeting Note Parser',
     quickEntrySubtitle:
       'Enter unstructured post-meeting notes, paste a voice transcript, or attach a site floor plan. Gemini structures a CRM follow-up report and engineering quotation draft.',
-    loadSampleBtn: 'Load Sample Meeting Note',
     rawNotesLabel: 'Post-Meeting Field Notes (EN / 中文 / Manglish)',
     rawNotesPlaceholder:
       'Example: Met Mr. Tan at Senai Industrial Park factory. Needs 16 units 4MP IP CCTV cameras, 1 NVR, 2 doors biometric access control, and 1 heavy-duty sliding auto gate...',
@@ -184,7 +133,6 @@ export const UI_TEXT = {
     savedToWorkspace: 'Saved to CRM & Quotation Builder',
     openInCrm: 'Open in CRM Board',
     openInQuotation: 'Edit Quotation',
-    sampleCaseLabel: 'Sample Scenarios',
 
     // CRM Board
     crmTitle: 'CRM Sales Visit & Follow-Up Tracker',
@@ -289,7 +237,6 @@ export const UI_TEXT = {
     fullNamePlaceholder: 'e.g., Kelvin Tan',
     signInBtn: 'Sign In to Workspace',
     signUpBtn: 'Create Account & Sign In',
-    quickDemoLabel: 'Quick Demo Login (1-Click Testing)',
     passwordRuleError: 'Password must be more than 6 characters (at least 7 characters)',
     passwordMatchError: 'Passwords do not match.',
     fullNameRequired: 'Please enter your full name.',
@@ -299,7 +246,9 @@ export const UI_TEXT = {
     accountSuspendedError:
       'Your account is currently suspended. Please contact a Masbina Admin to restore access.',
     signUpRoleNote:
-      'New self-registered accounts start with the Technical role. An Admin can upgrade permissions anytime.',
+      'The first registered account on a fresh system automatically becomes Admin. Subsequent self-registered accounts default to Technical (an Admin can upgrade permissions anytime).',
+    welcomeNewAdminBanner:
+      'Welcome to Masbina Smart CRM! Your initial Admin account has been created and signed in.',
     welcomeNewUserBanner:
       'Welcome to Masbina Smart CRM! Your Technical account has been created and signed in.',
     forgotStep1Desc:
@@ -368,7 +317,6 @@ export const UI_TEXT = {
     quickEntryTitle: '智能拜访记录解析器',
     quickEntrySubtitle:
       '输入原始拜访笔记、粘贴语音转文字记录，或上传现场草图/平面图。AI 将同步生成结构化销售拜访汇报表与工程报价单草稿。',
-    loadSampleBtn: '加载测试案例',
     rawNotesLabel: '拜访原始记录（支持中文 / 英文 / 混合口语）',
     rawNotesPlaceholder:
       '示例：在 Senai Industrial Park 拜访陈先生工厂。需要16个4MP IP闭路电视摄像头、1台NVR、2道指纹门禁及1套重型电动门...',
@@ -391,7 +339,6 @@ export const UI_TEXT = {
     savedToWorkspace: '已自动保存至客户跟进表与报价单',
     openInCrm: '前往客户跟进表查看',
     openInQuotation: '前往报价单编辑器',
-    sampleCaseLabel: '快速测试案例',
 
     // CRM Board
     crmTitle: '销售汇报与跟进看板',
@@ -495,7 +442,6 @@ export const UI_TEXT = {
     fullNamePlaceholder: '例如：陈伟明',
     signInBtn: '登录系统',
     signUpBtn: '创建账号并立即登录',
-    quickDemoLabel: '一键演示登录（快速测试不同角色）',
     passwordRuleError: '密码长度必须超过 6 个字符（至少 7 位）',
     passwordMatchError: '两次输入的密码不一致。',
     fullNameRequired: '请输入您的姓名。',
@@ -503,7 +449,8 @@ export const UI_TEXT = {
     duplicateEmailError: '该邮箱已被注册，请直接登录或更换邮箱。',
     invalidCredentialsError: '邮箱地址或密码不正确。',
     accountSuspendedError: '您的账号已被停用，请联系系统管理员 (Admin) 恢复权限。',
-    signUpRoleNote: '自助注册账号默认分配为「技术工程师 (Technical)」权限，如需升级请联系系统管理员。',
+    signUpRoleNote: '全新系统首位注册的账号将自动成为「系统管理员 (Admin)」，后续自助注册账号默认分配为「技术工程师 (Technical)」。',
+    welcomeNewAdminBanner: '欢迎使用 Masbina Smart CRM！您的初始系统管理员 (Admin) 账号已创建并自动登录。',
     welcomeNewUserBanner: '欢迎加入 Masbina Smart CRM！您的技术工程师账号已创建并自动登录。',
     forgotStep1Desc: '请输入已注册的工作邮箱，系统将生成 6 位数字验证码用于重置密码。',
     sendResetCodeBtn: '获取 6 位验证码',

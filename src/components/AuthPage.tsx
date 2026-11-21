@@ -24,12 +24,6 @@ interface AuthPageProps {
   onResetUserPasswordByEmail: (email: string, newPassword: string) => void;
 }
 
-const DEMO_ACCOUNTS: Array<{ role: UserRole; email: string }> = [
-  { role: 'Admin', email: 'admin@masbina.com.my' },
-  { role: 'Manager', email: 'manager@masbina.com.my' },
-  { role: 'Technical', email: 'tech@masbina.com.my' },
-];
-
 export function AuthPage({
   lang,
   onChangeLang,
@@ -102,23 +96,6 @@ export function AuthPage({
     onSignInSuccess(matched);
   };
 
-  const handleQuickDemoLogin = (demoEmail: string) => {
-    setError(null);
-    setSuccessBanner(null);
-    const matched = users.find(
-      (u) => u.email.toLowerCase() === demoEmail.toLowerCase(),
-    );
-    if (!matched) {
-      setError(t.invalidCredentialsError);
-      return;
-    }
-    if (matched.status !== 'Active') {
-      setError(t.accountSuspendedError);
-      return;
-    }
-    onSignInSuccess(matched);
-  };
-
   const handleSignUpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -154,19 +131,23 @@ export function AuthPage({
     }
 
     const now = new Date().toISOString();
+    const assignedRole: UserRole = users.length === 0 ? 'Admin' : 'Technical';
     const newUser: AppUser = {
       id: `usr-${crypto.randomUUID()}`,
       fullName: trimmedName,
       email: normalizedEmail,
       password: signUpPassword,
-      role: 'Technical',
+      role: assignedRole,
       status: 'Active',
       createdAt: now,
       lastLoginAt: now,
     };
 
     onRegisterUser(newUser);
-    onSignInSuccess(newUser, t.welcomeNewUserBanner);
+    onSignInSuccess(
+      newUser,
+      assignedRole === 'Admin' ? t.welcomeNewAdminBanner : t.welcomeNewUserBanner,
+    );
   };
 
   const handleForgotStep1 = (e: React.FormEvent) => {
@@ -497,30 +478,6 @@ export function AuthPage({
                       {t.signInBtn}
                     </button>
                   </form>
-
-                  {/* Compact Quick Demo Login Buttons */}
-                  <div className="border-t border-slate-200 pt-4">
-                    <p className="text-xs font-medium text-slate-500 mb-2.5">
-                      {t.quickDemoLabel}
-                    </p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {DEMO_ACCOUNTS.map((demo) => (
-                        <button
-                          key={demo.role}
-                          type="button"
-                          onClick={() => handleQuickDemoLogin(demo.email)}
-                          className="flex flex-col items-center justify-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-2 text-center hover:border-blue-300 hover:bg-blue-50/50 transition-colors"
-                        >
-                          <span className="text-xs font-semibold text-slate-900 whitespace-nowrap">
-                            {demo.role}
-                          </span>
-                          <span className="mt-0.5 text-[10px] font-mono text-slate-500 truncate max-w-full">
-                            {demo.email.split('@')[0]}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 </>
               )}
 
