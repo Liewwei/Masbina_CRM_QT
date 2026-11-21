@@ -109,7 +109,9 @@ export const UI_TEXT = {
     // Quick Entry
     quickEntryTitle: 'AI Meeting Note Parser',
     quickEntrySubtitle:
-      'Enter unstructured post-meeting notes, paste a voice transcript, or attach a site floor plan. Gemini structures a CRM follow-up report and engineering quotation draft.',
+      'Enter post-meeting notes, paste a voice transcript, or upload a PDF tender/BOQ, CSV/TXT document, or site floor plan. Gemini structures a CRM follow-up report and MYR quotation draft.',
+    aiStatusConnected: 'Gemini AI Connected',
+    aiStatusMissing: 'API Key Missing — Add GEMINI_API_KEY in Settings > Secrets',
     rawNotesLabel: 'Post-Meeting Field Notes (EN / 中文 / Manglish)',
     rawNotesPlaceholder:
       'Example: Met Mr. Tan at Senai Industrial Park factory. Needs 16 units 4MP IP CCTV cameras, 1 NVR, 2 doors biometric access control, and 1 heavy-duty sliding auto gate...',
@@ -119,8 +121,10 @@ export const UI_TEXT = {
     dictateStart: 'Dictate Voice Note',
     dictateStop: 'Stop Listening',
     dictateUnsupported: 'Live dictation is unavailable in this browser; paste transcript directly.',
-    imageUploadLabel: 'Site Sketch / Floor Plan (Optional)',
-    imageUploadHint: 'Upload PNG, JPG, or WEBP site drawing so AI can factor in camera & door placements.',
+    imageUploadLabel: 'Upload Document or Site Image (PDF, Tender/BOQ, Floor Plan, Photo)',
+    imageUploadHint:
+      'Upload PDF, TXT, CSV, MD, PNG, JPG, or WEBP (up to 15 MB) so AI reads all pages, BOQ tables, and site drawings.',
+    attachFileBtn: 'Attach File / Image',
     removeImage: 'Remove',
     generateBtn: 'Generate Report & Quotation',
     generatingBtn: 'Analyzing Notes & Structuring Quotation...',
@@ -324,7 +328,9 @@ export const UI_TEXT = {
     // Quick Entry
     quickEntryTitle: '智能拜访记录解析器',
     quickEntrySubtitle:
-      '输入原始拜访笔记、粘贴语音转文字记录，或上传现场草图/平面图。AI 将同步生成结构化销售拜访汇报表与工程报价单草稿。',
+      '输入原始拜访笔记、粘贴语音转文字记录，或上传 PDF 招标书/BOQ、CSV/TXT 文档或现场平面图。AI 将同步生成结构化销售拜访汇报表与马币工程报价单草稿。',
+    aiStatusConnected: 'Gemini AI 已连接',
+    aiStatusMissing: '缺少 GEMINI_API_KEY — 请在 Settings > Secrets 添加',
     rawNotesLabel: '拜访原始记录（支持中文 / 英文 / 混合口语）',
     rawNotesPlaceholder:
       '示例：在 Senai Industrial Park 拜访陈先生工厂。需要16个4MP IP闭路电视摄像头、1台NVR、2道指纹门禁及1套重型电动门...',
@@ -333,9 +339,10 @@ export const UI_TEXT = {
     dictateStart: '开始语音录入',
     dictateStop: '停止语音录入',
     dictateUnsupported: '当前浏览器不支持实时语音识别，请直接粘贴语音转文字内容。',
-    imageUploadLabel: '现场草图 / 平面图上传（选填）',
-    imageUploadHint: '支持 PNG、JPG、WEBP 格式，AI 将结合图纸估算点位与安装工程量。',
-    removeImage: '移除图片',
+    imageUploadLabel: '上传工程文件或现场图片（PDF 招标书、工程清单、平面图、现场照片）',
+    imageUploadHint: '支持 PDF、TXT、CSV、MD、PNG、JPG、WEBP（最大 15 MB），AI 将完整解析多页文档、工程清单与现场图纸。',
+    attachFileBtn: '上传文件 / 图片',
+    removeImage: '移除文件',
     generateBtn: '生成汇报与报价',
     generatingBtn: '正在解析拜访记录并生成报价单...',
     clearBtn: '清空输入',

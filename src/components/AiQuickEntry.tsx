@@ -1,16 +1,20 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowRight,
   Camera,
   Check,
-  ImagePlus,
+  CheckCircle2,
+  FileSpreadsheet,
+  FileText,
   Loader2,
   Mic,
   MicOff,
   RotateCcw,
   Sparkles,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import type {
   CrmRecord,
@@ -61,6 +65,76 @@ interface SpeechRecognitionInstance {
   stop: () => void;
 }
 
+type AttachmentKind = 'image' | 'pdf' | 'text';
+
+interface UploadedAttachment {
+  kind: AttachmentKind;
+  fileName: string;
+  fileSize: number;
+  fileMimeType: string;
+  typeLabel: string;
+  fileBase64: string;
+  imagePreviewUrl: string | null;
+}
+
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
+const ACCEPTED_UPLOAD_ATTR =
+  'application/pdf,text/plain,text/csv,text/markdown,image/png,image/jpeg,image/webp,.pdf,.txt,.csv,.md,.png,.jpg,.jpeg,.webp';
+
+function classifyUploadFile(file: File): {
+  kind: AttachmentKind;
+  mimeType: string;
+  typeLabel: string;
+} | null {
+  const mime = (file.type || '').toLowerCase();
+  const name = file.name.toLowerCase();
+
+  if (
+    mime === 'image/png' ||
+    mime === 'image/jpeg' ||
+    mime === 'image/webp' ||
+    /\.(png|jpe?g|webp)$/i.test(name)
+  ) {
+    const resolvedMime =
+      mime === 'image/png' || name.endsWith('.png')
+        ? 'image/png'
+        : mime === 'image/webp' || name.endsWith('.webp')
+          ? 'image/webp'
+          : 'image/jpeg';
+    const typeLabel =
+      resolvedMime === 'image/png'
+        ? 'PNG'
+        : resolvedMime === 'image/webp'
+          ? 'WEBP'
+          : 'JPG';
+    return { kind: 'image', mimeType: resolvedMime, typeLabel };
+  }
+
+  if (mime === 'application/pdf' || name.endsWith('.pdf')) {
+    return { kind: 'pdf', mimeType: 'application/pdf', typeLabel: 'PDF' };
+  }
+
+  if (mime === 'text/csv' || name.endsWith('.csv')) {
+    return { kind: 'text', mimeType: 'text/csv', typeLabel: 'CSV' };
+  }
+
+  if (mime === 'text/markdown' || name.endsWith('.md')) {
+    return { kind: 'text', mimeType: 'text/markdown', typeLabel: 'MD' };
+  }
+
+  if (mime === 'text/plain' || name.endsWith('.txt')) {
+    return { kind: 'text', mimeType: 'text/plain', typeLabel: 'TXT' };
+  }
+
+  return null;
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function AiQuickEntry({
   lang,
   existingQuotations,
@@ -72,12 +146,12 @@ export function AiQuickEntry({
 }: AiQuickEntryProps) {
   const t = UI_TEXT[lang];
 
+  const [aiStatus, setAiStatus] = useState<'checking' | 'connected' | 'missing'>(
+    'checking',
+  );
   const [notes, setNotes] = useState('');
   const [voiceTranscript, setVoiceTranscript] = useState('');
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  const [imageBase64, setImageBase64] = useState<string | null>(null);
-  const [imageMimeType, setImageMimeType] = useState<string | null>(null);
-  const [imageName, setImageName] = useState<string>('');
+  const [attachment, setAttachment] = useState<UploadedAttachment | null>(null);
 
   const [isListening, setIsListening] = useState(false);
   const [speechNotice, setSpeechNotice] = useState<string | null>(null);
@@ -92,13 +166,29 @@ export function AiQuickEntry({
     quotation: EngineeringQuotation;
   } | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then((data: { aiConfigured?: boolean }) => {
+        if (!cancelled) {
+          setAiStatus(data.aiConfigured ? 'connected' : 'missing');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAiStatus('missing');
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const handleClear = () => {
     setNotes('');
     setVoiceTranscript('');
-    setImagePreviewUrl(null);
-    setImageBase64(null);
-    setImageMimeType(null);
-    setImageName('');
+    setAttachment(null);
     setErrorMsg(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -109,21 +199,24 @@ export function AiQuickEntry({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
+    const classified = classifyUploadFile(file);
+    if (!classified) {
       setErrorMsg(
         lang === 'en'
-          ? 'Please select a valid PNG, JPG, or WEBP image file.'
-          : '请上传有效的 PNG、JPG 或 WEBP 图片文件。',
+          ? 'Unsupported file type. Please upload PDF, TXT, CSV, MD, PNG, JPG, or WEBP.'
+          : '不支持的文件格式，请上传 PDF、TXT、CSV、MD、PNG、JPG 或 WEBP 文件。',
       );
+      e.target.value = '';
       return;
     }
 
-    if (file.size > 8 * 1024 * 1024) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       setErrorMsg(
         lang === 'en'
-          ? 'Image must be smaller than 8 MB.'
-          : '上传图片大小不能超过 8 MB。',
+          ? 'File must be smaller than 15 MB.'
+          : '上传文件大小不能超过 15 MB。',
       );
+      e.target.value = '';
       return;
     }
 
@@ -132,21 +225,23 @@ export function AiQuickEntry({
       const dataUrl = typeof reader.result === 'string' ? reader.result : '';
       const commaIdx = dataUrl.indexOf(',');
       if (commaIdx !== -1) {
-        setImagePreviewUrl(dataUrl);
-        setImageBase64(dataUrl.slice(commaIdx + 1));
-        setImageMimeType(file.type);
-        setImageName(file.name);
+        setAttachment({
+          kind: classified.kind,
+          fileName: file.name,
+          fileSize: file.size,
+          fileMimeType: classified.mimeType,
+          typeLabel: classified.typeLabel,
+          fileBase64: dataUrl.slice(commaIdx + 1),
+          imagePreviewUrl: classified.kind === 'image' ? dataUrl : null,
+        });
         setErrorMsg(null);
       }
     };
     reader.readAsDataURL(file);
   };
 
-  const removeImage = () => {
-    setImagePreviewUrl(null);
-    setImageBase64(null);
-    setImageMimeType(null);
-    setImageName('');
+  const removeAttachment = () => {
+    setAttachment(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -202,11 +297,11 @@ export function AiQuickEntry({
   };
 
   const handleGenerate = async () => {
-    if (!notes.trim() && !voiceTranscript.trim() && !imageBase64) {
+    if (!notes.trim() && !voiceTranscript.trim() && !attachment?.fileBase64) {
       setErrorMsg(
         lang === 'en'
-          ? 'Enter field notes, a voice transcript, or upload a site sketch first.'
-          : '请先输入拜访记录、粘贴语音文本或上传现场草图。',
+          ? 'Enter field notes, a voice transcript, or upload a document/site image first.'
+          : '请先输入拜访记录、粘贴语音文本或上传工程文档/现场图片。',
       );
       return;
     }
@@ -221,8 +316,9 @@ export function AiQuickEntry({
         body: JSON.stringify({
           notes,
           voiceTranscript,
-          imageBase64,
-          imageMimeType,
+          fileBase64: attachment?.fileBase64 ?? null,
+          fileMimeType: attachment?.fileMimeType ?? null,
+          fileName: attachment?.fileName ?? null,
           todayDate: getTodayISO(),
         }),
       });
@@ -341,14 +437,39 @@ export function AiQuickEntry({
 
   return (
     <div className="space-y-6">
-      {/* Page Title */}
-      <div className="max-w-3xl">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
-          {t.quickEntryTitle}
-        </h1>
-        <p className="mt-1 text-sm text-slate-600 leading-relaxed">
-          {t.quickEntrySubtitle}
-        </p>
+      {/* Page Title & Live Gemini Connection Status */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="max-w-3xl">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">
+            {t.quickEntryTitle}
+          </h1>
+          <p className="mt-1 text-sm text-slate-600 leading-relaxed">
+            {t.quickEntrySubtitle}
+          </p>
+        </div>
+
+        {aiStatus !== 'checking' && (
+          <div
+            role="status"
+            className={`inline-flex items-center gap-1.5 self-start rounded-md border px-3 py-1.5 text-xs font-medium whitespace-nowrap shrink-0 ${
+              aiStatus === 'connected'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-amber-200 bg-amber-50 text-amber-900'
+            }`}
+          >
+            {aiStatus === 'connected' ? (
+              <>
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                <span>{t.aiStatusConnected}</span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                <span>{t.aiStatusMissing}</span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Instant CCTV Quotation Presets Bar */}
@@ -390,7 +511,7 @@ export function AiQuickEntry({
             <h2 className="text-sm font-semibold text-slate-900">
               {t.rawNotesLabel}
             </h2>
-            {(notes || voiceTranscript || imagePreviewUrl) && (
+            {(notes || voiceTranscript || attachment) && (
               <button
                 type="button"
                 onClick={handleClear}
@@ -454,10 +575,10 @@ export function AiQuickEntry({
               />
             </div>
 
-            {/* Floor Plan / Site Sketch Upload */}
+            {/* Document & Site Image Upload */}
             <div className="p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
                   <label className="block text-xs font-semibold text-slate-700">
                     {t.imageUploadLabel}
                   </label>
@@ -468,43 +589,60 @@ export function AiQuickEntry({
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/png,image/jpeg,image/webp"
+                  accept={ACCEPTED_UPLOAD_ATTR}
                   onChange={handleFileChange}
                   className="hidden"
-                  id="site-sketch-upload"
+                  id="site-document-upload"
                 />
                 <label
-                  htmlFor="site-sketch-upload"
+                  htmlFor="site-document-upload"
                   className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0"
                 >
-                  <ImagePlus className="h-3.5 w-3.5 text-blue-600" />
-                  {lang === 'en' ? 'Attach Drawing' : '上传图纸'}
+                  <Upload className="h-3.5 w-3.5 text-blue-600" />
+                  {t.attachFileBtn}
                 </label>
               </div>
 
-              {imagePreviewUrl && (
+              {attachment && (
                 <div className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-slate-50 p-2.5">
                   <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={imagePreviewUrl}
-                      alt="Uploaded site sketch"
-                      referrerPolicy="no-referrer"
-                      className="h-14 w-20 rounded border border-slate-200 object-cover bg-white shrink-0"
-                    />
+                    {attachment.kind === 'image' && attachment.imagePreviewUrl ? (
+                      <img
+                        src={attachment.imagePreviewUrl}
+                        alt="Uploaded site image"
+                        referrerPolicy="no-referrer"
+                        className="h-14 w-20 rounded border border-slate-200 object-cover bg-white shrink-0"
+                      />
+                    ) : (
+                      <div
+                        className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded border ${
+                          attachment.kind === 'pdf'
+                            ? 'border-red-200 bg-red-50 text-red-700'
+                            : 'border-blue-200 bg-blue-50 text-blue-700'
+                        }`}
+                      >
+                        {attachment.typeLabel === 'CSV' ? (
+                          <FileSpreadsheet className="h-5 w-5" />
+                        ) : (
+                          <FileText className="h-5 w-5" />
+                        )}
+                        <span className="mt-0.5 font-mono text-[9px] font-bold leading-none">
+                          {attachment.typeLabel}
+                        </span>
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="truncate text-xs font-medium text-slate-800">
-                        {imageName}
+                        {attachment.fileName}
                       </p>
-                      <p className="text-[11px] text-slate-500">
-                        {lang === 'en'
-                          ? 'Attached for multimodal AI site analysis'
-                          : '已附加，AI 将同步解析平面图点位'}
+                      <p className="mt-0.5 text-[11px] text-slate-500 font-mono tabular-nums">
+                        {attachment.typeLabel} · {formatFileSize(attachment.fileSize)}
                       </p>
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={removeImage}
+                    onClick={removeAttachment}
                     className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 shrink-0"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

@@ -88,6 +88,11 @@ OTHER MALAYSIAN B2B ENGINEERING PRICING GUIDELINES (MYR / RM — FOR NON-CCTV IT
   3. "Testing & Commissioning" (for CCTV, use the exact catalog rates RM 300–RM 850 / Lot; scale up to RM 1,800 for multi-system projects)
 - Section C Optional Maintenance Plan: ALWAYS include 1–2 realistic preventive maintenance options (for CCTV, apply RM 600/yr Small, RM 1,100/yr Medium, or RM 2,200/yr Industrial Quarterly).
 
+MULTIMODAL DOCUMENT & SITE IMAGE ANALYSIS:
+- When a PDF document (tender, BOQ, engineering specification, quotation comparison, floor plan), text/CSV/Markdown document, or site image/photo is attached, thoroughly read EVERY page, table, callout, and visual detail.
+- Extract all client details, site location, camera/door/gate/alarm quantities, technical specifications, cable/conduit/installation requirements, and target deadlines.
+- Map EVERY identified CCTV hardware, engineering service (Design, Installation per point, Testing & Commissioning), and preventive maintenance item directly to Masbina Technology S/B's exact MYR Standard Price Catalog above so both "salesReport" and "quotationDraft" are accurate and ready to issue.
+
 DATE HANDLING:
 - Today's reference date will be provided in the prompt. Convert relative dates like "this Friday", "next Tuesday", "within 2 days" into an exact YYYY-MM-DD string for "nextFollowUpDate".
 - Keep client-facing quotation line item descriptions professional in English (clear brand/spec format suitable for an official Malaysian B2B quotation). If the input contains Chinese notes, extract all details accurately into clean professional English (or bilingual where helpful in painPoints/technicalRequirements).
@@ -285,12 +290,47 @@ async function callGeminiWithRetry<T>(fn: () => Promise<T>, maxRetries = 2): Pro
   throw lastError;
 }
 
+const INLINE_MULTIMODAL_MIMES = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+]);
+
+const TEXT_DOCUMENT_MIMES = new Set([
+  'text/plain',
+  'text/csv',
+  'text/markdown',
+]);
+
+const MAX_BASE64_PAYLOAD_CHARS = 22 * 1024 * 1024; // ~16 MB decoded binary safety cap
+const MAX_DECODED_TEXT_CHARS = 200_000;
+
+function resolveUploadMimeType(rawMime: string, fileName: string): string {
+  const mime = rawMime.trim().toLowerCase();
+  if (INLINE_MULTIMODAL_MIMES.has(mime) || TEXT_DOCUMENT_MIMES.has(mime)) {
+    return mime;
+  }
+  const lowerName = fileName.toLowerCase();
+  if (lowerName.endsWith('.pdf')) return 'application/pdf';
+  if (lowerName.endsWith('.png')) return 'image/png';
+  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg')) return 'image/jpeg';
+  if (lowerName.endsWith('.webp')) return 'image/webp';
+  if (lowerName.endsWith('.csv')) return 'text/csv';
+  if (lowerName.endsWith('.md')) return 'text/markdown';
+  if (lowerName.endsWith('.txt')) return 'text/plain';
+  return mime;
+}
+
 async function startServer() {
   const app = express();
-  app.use(express.json({ limit: '15mb' }));
+  app.use(express.json({ limit: '25mb' }));
 
   app.get('/api/health', (_req, res) => {
-    res.json({ status: 'ok' });
+    const aiConfigured = Boolean(
+      process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim(),
+    );
+    res.json({ ok: true, status: 'ok', aiConfigured });
   });
 
   app.post('/api/parse-notes', async (req, res) => {
@@ -303,10 +343,22 @@ async function startServer() {
       const notes = typeof body.notes === 'string' ? body.notes : '';
       const voiceTranscript =
         typeof body.voiceTranscript === 'string' ? body.voiceTranscript : '';
-      const imageBase64 =
-        typeof body.imageBase64 === 'string' ? body.imageBase64 : '';
-      const imageMimeType =
-        typeof body.imageMimeType === 'string' ? body.imageMimeType : '';
+      const fileBase64 =
+        typeof body.fileBase64 === 'string' && body.fileBase64.trim()
+          ? body.fileBase64.trim()
+          : typeof body.imageBase64 === 'string'
+            ? body.imageBase64.trim()
+            : '';
+      const rawFileMimeType =
+        typeof body.fileMimeType === 'string' && body.fileMimeType.trim()
+          ? body.fileMimeType.trim()
+          : typeof body.imageMimeType === 'string'
+            ? body.imageMimeType.trim()
+            : '';
+      const fileName =
+        typeof body.fileName === 'string'
+          ? body.fileName.replace(/[\r\n\t]+/g, ' ').trim().slice(0, 140)
+          : '';
       const todayDate =
         typeof body.todayDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.todayDate)
           ? body.todayDate
@@ -315,10 +367,36 @@ async function startServer() {
       const trimmedNotes = notes.trim();
       const trimmedVoice = voiceTranscript.trim();
 
-      if (!trimmedNotes && !trimmedVoice && !imageBase64) {
+      if (!trimmedNotes && !trimmedVoice && !fileBase64) {
         res.status(400).json({
           error:
-            'Please provide meeting notes, a voice transcript, or a site floor plan image.',
+            'Please provide meeting notes, a voice transcript, or upload a document/site image.',
+        });
+        return;
+      }
+
+      if (fileBase64 && fileBase64.length > MAX_BASE64_PAYLOAD_CHARS) {
+        res.status(400).json({
+          error: 'Uploaded file exceeds the 15 MB limit. Please upload a smaller file.',
+        });
+        return;
+      }
+
+      const resolvedMime = fileBase64
+        ? resolveUploadMimeType(rawFileMimeType, fileName)
+        : '';
+
+      const isInlineMultimodal =
+        Boolean(fileBase64) && INLINE_MULTIMODAL_MIMES.has(resolvedMime);
+      const isTextDocument =
+        Boolean(fileBase64) &&
+        (TEXT_DOCUMENT_MIMES.has(resolvedMime) ||
+          /\.(txt|csv|md)$/i.test(fileName));
+
+      if (fileBase64 && !isInlineMultimodal && !isTextDocument) {
+        res.status(400).json({
+          error:
+            'Unsupported file format. Please upload PDF, TXT, CSV, MD, PNG, JPG, or WEBP.',
         });
         return;
       }
@@ -326,14 +404,32 @@ async function startServer() {
       const ai = getGeminiClient();
 
       const referenceDate = todayDate || new Date().toISOString().slice(0, 10);
+      const safeDocLabel = fileName || (resolvedMime === 'application/pdf' ? 'document.pdf' : 'attachment');
+
+      let decodedDocumentBlock = '';
+      if (isTextDocument) {
+        const decodedText = Buffer.from(fileBase64, 'base64')
+          .toString('utf8')
+          .slice(0, MAX_DECODED_TEXT_CHARS)
+          .trim();
+        if (decodedText) {
+          decodedDocumentBlock = `=== UPLOADED DOCUMENT (${safeDocLabel}) ===\n${decodedText}`;
+        }
+      }
+
+      const attachmentHint = isInlineMultimodal
+        ? resolvedMime === 'application/pdf'
+          ? `UPLOADED PDF DOCUMENT (${safeDocLabel}): Read all pages, BOQ tables, scope specifications, drawings, client details, quantities, and timelines thoroughly, and map all items to Masbina's MYR price catalog.`
+          : `SITE SKETCH / FLOOR PLAN / PHOTO ATTACHED (${safeDocLabel}): Inspect the image carefully to extract room counts, camera placements, access doors, or gate entrances and incorporate them into the technical requirements and quotation equipment quantities.`
+        : '';
+
       const promptSections = [
         `Reference Current Date: ${referenceDate}`,
         trimmedNotes ? `POST-MEETING FIELD NOTES:\n${trimmedNotes}` : '',
         trimmedVoice ? `VOICE-NOTE TRANSCRIPT:\n${trimmedVoice}` : '',
-        imageBase64
-          ? 'SITE SKETCH / FLOOR PLAN IMAGE ATTACHED: Inspect the drawing carefully to extract room counts, camera placements, access doors, or gate entrances and incorporate them into the technical requirements and quotation equipment quantities.'
-          : '',
-        'Generate the structured JSON containing both salesReport and quotationDraft following Masbina Technology S/B engineering standards.',
+        decodedDocumentBlock,
+        attachmentHint,
+        'Generate the structured JSON containing both salesReport and quotationDraft following Masbina Technology S/B engineering standards and exact MYR catalog pricing.',
       ].filter(Boolean);
 
       const parts: Array<
@@ -341,15 +437,11 @@ async function startServer() {
         | { inlineData: { mimeType: string; data: string } }
       > = [];
 
-      if (imageBase64 && imageMimeType) {
-        const allowedMimes = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
-        const safeMime = allowedMimes.includes(imageMimeType)
-          ? imageMimeType
-          : 'image/jpeg';
+      if (isInlineMultimodal) {
         parts.push({
           inlineData: {
-            mimeType: safeMime,
-            data: imageBase64,
+            mimeType: resolvedMime,
+            data: fileBase64,
           },
         });
       }
